@@ -1,0 +1,1367 @@
+# Dois Language Overview
+
+Dois is a statically typed programming language designed around a clear separation between **expressions** and **statements**, and between **functions** and **procedures**. This separation allows the language to support both **functional** and **procedural** programming styles in a consistent way.
+
+The guiding idea of Dois is that some constructs exist to **compute values**, while others exist to **perform actions**. Making this distinction explicit simplifies reasoning about code, side effects, and program structure.
+
+---
+
+## Statements vs Expressions
+
+In Dois, we make a clear distinction between **statements** (things that *do*) and **expressions** (things that *are*).
+
+### Statements
+
+Statements perform actions and may produce side effects. They do not inherently produce a value.
+
+Examples of statements include:
+
+- `let` bindings
+- `var` assignments
+- `proc` (procedure) calls
+- loops (`while`, `for`)
+- control-flow blocks inside procedures
+
+Example:
+
+```dois
+var x : Int = 10;
+x = x + 1;
+println(x);
+```
+
+Each line performs an action rather than evaluating to a value.
+
+### Expressions
+
+Expressions evaluate to a value and can be used anywhere a value is expected.
+
+Examples include:
+
+- arithmetic operations
+- function calls
+- conditional expressions
+- pattern matching expressions
+
+Example:
+
+```dois
+let x = 10 + 2 * 3;
+```
+
+The expression `10 + 2 * 3` evaluates to the value `16`.
+
+Expressions are the building blocks of **function bodies** and other value-producing constructs.
+
+---
+
+## Procedures vs Functions
+
+Dois separates **functions** from **procedures**.
+
+This distinction enforces a clear boundary between **pure computation** and **side effects**.
+
+### Functions
+
+Functions:
+
+- are **pure** (no side effects)
+- consist of a **single expression**
+- *always* return a value
+- are called using the `$` applicator
+
+Example:
+
+```dois
+fn add (a : Int, b : Int) : Int 
+  a + b
+end
+
+let result = add$(2, 3);
+```
+
+Because functions are pure, they are easy to reason about and compose.
+
+### Procedures
+
+Procedures:
+
+- may perform **side effects**
+- consist of **statements** inside a `do ... end` block
+
+Example:
+
+```dois
+proc greet(name : String) do
+  println("Hello, ");
+  println(name);
+end
+```
+
+Procedures are typically used for:
+
+- input/output
+- mutation
+- control flow
+- interacting with the outside world
+
+---
+
+## Type System Overview
+
+Dois uses a **statically typed system with type inference**.
+
+This means:
+
+- Every value has a type
+- Types are checked at compile time
+- Explicit annotations are optional when the compiler can infer them
+
+Example:
+
+```dois
+let x = 10;      # inferred as Int
+let y = "hello"; # inferred as String
+```
+
+The type system supports:
+
+- primitive types (`Int`, `Float`, `Bool`, etc.)
+- product types (records / structs)
+- union types
+- generic types
+- parametric polymorphism
+
+Type inference is based on a Hindley–Milner style system extended with structural typing and generics.
+
+---
+
+## Compilation Model
+
+Dois is compiled using a **transpilation pipeline**.
+
+The compilation process is:
+
+1. Parse `.dois` source files into an abstract syntax tree (AST)
+2. Perform type checking and type inference
+3. Generate equivalent **C code**
+4. Compile the generated C code into machine code using a system C compiler
+
+Memory management is handled using the **Boehm–Demers–Weiser garbage collector**, allowing programs to allocate freely without manual memory management.
+
+This model provides:
+
+- portability
+- predictable performance
+- easy integration with C tooling
+
+---
+
+## Design Philosophy
+
+The design of Dois emphasizes:
+
+- **clarity** — explicit distinction between pure and impure code
+- **type safety** — strong static typing with inference
+- **composability** — small expressions forming larger computations
+- **simplicity of implementation** — a compiler architecture that remains approachable
+
+By separating computation from side effects and keeping the type system expressive but tractable, Dois aims to provide a language that reinforces *good programming practices*.
+# Dois Language Documentation
+
+## Language Specification
+- [Overview](overview.md)
+- [Language Reference](language-spec/README.md)
+  - Lexical Structure
+  - Statements
+  - Expressions
+  - Control Flow
+  - Functions
+  - Procedures
+  - Types
+  - Generics
+  - Modules
+  - Program Structure
+
+## Runtime
+- [Memory Model](runtime/memory-model.md)
+- [Error Handling](runtime/error-handling.md)
+
+## Standard Library
+- [Collections](standard-library/collections.md)
+- [I/O](standard-library/io.md)
+- [Iterators](standard-library/iterators.md)
+
+## Examples
+- [Sample Programs](examples/)
+
+# Generics
+
+Generics allow types and functions in **Dois** to operate over a range of types while preserving type safety.
+
+Instead of writing separate implementations for each type, a generic definition can work with **type parameters** that are determined by the compiler during type inference.
+
+Dois supports **parametric polymorphism**, similar to languages in the ML and Rust families.
+
+---
+
+##  Generic Type Parameters
+
+Generic parameters are declared using angle brackets after the type, function, or procedure name.
+
+```
+<T>
+<K, V>
+<T, E>
+```
+
+Example:
+
+```dois
+type Box<T> has
+  value : T
+end
+```
+
+This represents a `Box` that can contain *any* type.
+
+---
+
+## Constructing Generic Values
+
+Generic parameters are usually inferred automatically.
+
+```dois
+let int_box = Box(value = 10);
+let str_box = Box(value = "hello");
+```
+
+The compiler infers:
+
+```
+int_box : Box<Int>
+str_box : Box<String>
+```
+
+Explicit type parameters are rarely required.
+
+---
+
+## Generic Union Types
+
+Generics are commonly used with **union types** to represent flexible data structures.
+
+Example:
+
+```dois
+type Maybe<T> is
+  Some(T) | Nil
+end
+```
+
+Usage:
+
+```dois
+let a = Some(10);
+let b = Nil;
+```
+
+The compiler infers:
+
+```
+a : Maybe<Int>
+b : Maybe<Int>
+```
+
+---
+
+## Generic Functions
+
+Functions may also accept type parameters.
+
+```dois
+fn identity<T>(value: T) : T
+    value
+end
+```
+
+Example usage:
+
+```dois
+let a = identity$(10)
+let b = identity$("hello")
+```
+
+Type inference determines the concrete type of `T` automatically.
+
+---
+
+## Multiple Type Parameters
+
+Definitions may include multiple type parameters.
+
+```dois
+type Pair<A, B> has
+    first  : A
+    second : B
+end
+```
+
+Example:
+
+```dois
+let pair = Pair(first = 1, second = "hello")
+```
+
+The inferred type:
+
+```
+Pair<Int, String>
+```
+
+---
+
+## Type Inference With Generics
+
+Dois uses **Hindley–Milner style inference**, meaning generic types are usually deduced without explicit annotations.
+
+Example:
+
+```dois
+fn first<A, B>(pair: Pair<A, B>) : A
+  pair.first
+end
+```
+
+Usage:
+
+```dois
+let p = Pair(first = 10, second = "hello");
+let x = first$(p);
+```
+
+The compiler infers:
+
+```
+x : Int
+```
+
+---
+
+## Summary
+
+Generics in Dois provide:
+
+- parametric polymorphism
+- reusable type definitions
+- reusable function definitions
+- strong compile-time type safety
+- integration with Hindley–Milner inference
+
+Generics are widely used when defining data structures such as `Maybe`, `Result`, `Pair`, and other reusable abstractions.
+# Statements
+
+Statements in Dois are the building blocks for writing imperative code. They perform actions such as assigning values, invoking procedures, and controlling program flow. They are the "do-" half that "Dois" is named after.
+
+---
+
+## Value Declarations
+
+### Binding Declaration (`let`)
+
+Use `let` to bind a value to an identifier.
+
+```dois
+let x = 10;
+let name = "Alice";
+```
+
+### Variable Declaration (`var`)
+
+Use `var` to declare an identifier as a variable value.
+
+```dois
+var counter = 0;
+counter = counter + 1;
+
+var uninitialized : Int; # Uninitialized variables are allowed, but discouraged.
+```
+
+---
+
+## Assignments
+
+Assignment statements update the value of a mutable variable.
+
+```dois
+var total = 42;
+total = total + 8;
+```
+
+Assignment can and reassignment only be performed on variables declared with `var`.
+
+```dois
+let x = 2;
+x = x + 1; # Error, cannot mutate bound identifier "x"
+```
+
+---
+
+## Procedure Calls
+
+Calling a procedure is a statement in Dois. Arguments are provided in parentheses.
+
+```dois
+print("Hello, world!");
+increment(counter);
+```
+
+Procedure calls are inpure, and *must* be in a statement, not an expression.
+
+---
+
+## Control Flow Statements
+
+Dois supports standard control flow constructs:
+
+### If Statement
+
+```dois
+if x > 0 do
+  print("Positive");
+else if x < 0
+  print("Non-positive");
+else
+  print("Zero");
+end
+
+```
+
+The `else` block is optional.
+
+### While Statement
+
+```dois
+var n = 5;
+while n > 0 do
+  print(n);
+  n = n - 1;
+end
+```
+
+### For Statement
+<!-- TODO update to use iterators -->
+```dois
+for i in 0..10 do
+  print(i);
+end
+```
+
+---
+
+## General Usage
+
+Statements are written one per line, or separated by semicolons within a block. Braces `{ ... }` define statement blocks, and indentation is encouraged but not required.
+
+```dois
+let greeting = "Hi";
+if greeting == "Hi" do
+  print("Hello there!");
+end
+```
+
+---
+
+## Summary
+
+- Use `let` for immutable variables, `var` for mutable ones.
+- Assignment is only allowed for variables declared with `var`.
+- Procedure calls, control flow (`if`, `while`, `for`) are all statements.
+- Statements are separated by semicolons.
+# Program Structure
+
+## Overview
+
+A Dois program is either made to be compiled into an executable, or imported in another program as a library.
+
+## Main Procedure
+
+The main procedure is the designated entry point of a Dois program. When a program is executed, the runtime system begins execution at the main procedure. This procedure must be named `main`.
+
+Example:
+
+```
+proc main() do
+  // program entry point code
+end
+```
+
+## Libraries
+
+Dois supports the inclusion of libraries to extend the functionality of programs. Libraries can provide additional procedures, types, and constants. To use a library, a module must declare it explicitly, allowing the compiler to resolve references to library elements.
+
+Example:
+
+```
+import "Math"
+
+proc calculate() {
+  let result = Math.sqrt(25);
+}
+```
+
+## Summary
+
+Only one `main` procedure should exist when compiling.
+
+Example:
+```bash
+doisc my_program.dois
+```
+... `my_program.dois` should only have a single `main` procedure defined; otherwise, the compilation will fail.
+
+
+# Procedures
+
+Procedures represent **impure operations** in Dois.  
+They are typically used for tasks that involve side effects such as:
+
+- input/output
+- mutation
+- interacting with the environment
+- calling external systems
+
+Procedures differ from functions in that they **do not return arbitrary values**.
+
+---
+
+# Syntax
+
+Procedures are declared using the `proc` keyword.
+
+```dois
+proc procedure_name(param1: Type1, param2: Type2)
+  <statements>
+end
+```
+
+Example:
+
+```dois
+proc print_point(p: Point<Int>)
+  println("x: " + p.x + ", y: " + p.y);
+end
+```
+
+Procedures may contain statements such as variable declarations, assignments, control flow, and other procedure calls.
+
+---
+
+## The `Result` Type
+
+Every procedure in Dois implicitly returns a value of type `Result`, where:
+
+```dois
+type Result is Ok | Err end
+
+type Ok end     # Ok has no fields
+
+type Err has
+  message : String,
+  rc : Int
+end
+```
+
+This return type does **not need to be written** in the procedure declaration.
+
+The returned `Result` indicates whether the procedure executed successfully or encountered an error.
+
+Example:
+
+```dois
+proc log_message(msg: String)
+  println(msg);
+end
+```
+
+Even though no value is explicitly returned, the procedure implicitely returns `Ok()`
+
+---
+
+## Raising Errors
+
+A procedure may explicitly return an error value.
+
+```dois
+proc write_file(path: String, contents: String)
+  let res = write_to_file();
+  if res != Ok() do
+    raise Err(message = "write failed", rc = 1);
+  end
+end
+```
+
+Raising an error stops execution of the procedure and produces an `Err` result.
+
+---
+
+## Calling Procedures
+
+Procedures are invoked as **statements**.
+
+```dois
+print_point(p);
+log_message("hello");
+```
+
+The implicit `Result` may be ignored or inspected.
+
+Example:
+
+```dois
+let r = write_file("output.txt", "hello");
+
+if r != Ok() do
+  println("Failure!");
+end
+```
+
+## Error Propagation
+
+To prevent unnecessary boilerplate when inspecting the result of a `proc` call, the `?` propagation operator can be used to implicitly propagate the error through the current procedure.
+
+Example:
+
+```dois
+proc always_fails() do
+  raise Err(
+    message = "always_fails() always fails", 
+    rc = 1
+  );
+end
+
+always_fails()?
+
+# Desugars to:
+#   let res = always_fails();
+#   if res != Ok() do
+#     raise res;
+#   end
+#   # otherwise continue...
+
+```
+---
+
+## Procedures vs Functions
+
+| Feature | Function (`fn`) | Procedure (`proc`) |
+|--------|----------------|--------------------|
+| Purity | Pure | Impure |
+| Returns | Anything | `Result` |
+| Usage | Computation | Side effects |
+
+Functions are intended for **deterministic computation**, while procedures are used for **effects and system interaction**.
+
+---
+
+##  Summary
+
+Procedures:
+
+- perform side effects
+- contain a list statements
+- implicitly return a `Result`
+- may explicitly raise an error
+- may not be called in pure (`fn`) code bodies
+# Modules
+## Overview
+
+**Modules** (or *libraries*)are the fundamental building blocks of a Dois program. Each module encapsulates related code and data. Modules can import other modules/libraries to use their functionality.
+
+## Defining a Module
+
+A module can be defined in either a `.dois` file that is compiled into an executable, or in a standalone file.
+
+Example:
+```dois
+module MyModule has
+  fn foo() : Int
+    ...
+  end
+
+  proc do_something()
+    ...
+  end
+
+  let pi = 3.14;
+end
+```
+
+`MyModule` can be used like so:
+```dois
+proc main() do
+  let x = MyModule::foo();
+
+  MyModule::do_something();
+
+  let radius = 5;
+  let area = MyModule::pi * r * r;
+end
+```
+
+
+## Importing Libraries:
+Modules can be imported using the `import` keyword.
+
+Example:
+
+```
+import MyModule
+
+proc main() do
+  MyModule::do_something();
+end
+```# Dois Language Specification
+
+- [Lexical Structure](lexical-structure.md)
+- [Statements](statements.md)
+- [Expressions](expressions.md)
+- [Control Flow](control-flow.md)
+- [Functions](functions.md)
+- [Procedures](procedures.md)
+- [Types](types.md)
+- [Generics](generics.md)
+- [Modules](modules.md)
+- [Program Structure](program-structure.md)# Functions
+
+Functions in **Dois** are expressions that can be called, or *evaluated*.
+
+## Syntax
+
+```dois
+fn function_name<T>(param1: Type1, param2: Type2, ...) : ReturnType
+  <expression>
+end
+```
+<!-- TODO get rid of => and $ needed for fn declaration-->
+
+- `fn` – keyword to declare a function.
+- `<T>` – optional generic type parameters.
+- `param: Type` – parameters with their types annotated.
+- `: ReturnType` – annotates the type of value the function evaluates to.
+- `<expression>` – the expression to be evaluated.
+
+### Examples
+
+```dois
+fn add(x: Int, y: Int) : Int
+  x + y
+end
+
+fn identity<T>(value: T) : T
+  value
+end
+
+fn square(x: Int) : Int
+  x * x
+end
+```
+
+## Type Inference
+
+Parameters and return types can sometimes be inferred if not explicitly provided, but explicit types improve readability and error reporting.
+
+```dois
+fn double(x: Int)
+  x * 2  // inferred return type is Int
+end
+```
+
+## Generics
+
+Functions can accept generic parameters to operate on multiple types.
+
+```dois
+fn swap$<T>(a: T, b: T) : (T, T)
+  (b, a)
+end
+```
+<!-- TODO have to add tuple typing -->
+
+## Best Practices
+
+- Use descriptive names for both the function and parameters.
+- Prefer explicit type annotations for public APIs.# Types
+
+Types in **Dois** describe the shape of values and enable the compiler to verify program correctness.
+
+Dois uses **static typing** with **Hindley–Milner style type inference**, meaning many types can be inferred automatically while still maintaining strong compile‑time guarantees.
+
+The type system supports:
+
+- primitive types
+- parametric generics
+- algebraic data types (ADTs)
+- product types (records)
+- union types (variants)
+
+---
+
+## Primitive Types
+
+Primitive types are built-in value types provided by the language.
+
+Common primitives include:
+
+```dois
+Int
+Float
+Bool
+String
+Char
+Nil
+```
+
+Examples:
+
+```dois
+let a : Int     = 10;
+let b : Float   = 3.14;
+let c : Bool    = true;
+let d : String  = "hello";
+```
+
+In many cases the compiler infers the type automatically.
+
+```dois
+let x = 42;        # inferred as Int
+let y = "text";    # inferred as String
+```
+
+---
+
+## Type Declarations
+
+New types are declared using the `type` keyword.
+
+```dois
+type TypeName
+    ...
+end
+```
+
+Two major forms exist:
+
+- **product types** (`has`)
+- **union types** (`is`)
+
+These correspond to the components of **algebraic data types (ADTs)**.
+
+---
+
+## Product Types
+
+Product types define structures composed of multiple fields.
+
+Syntax:
+
+```dois
+type Point has
+  x : Int
+  y : Int
+end
+```
+
+Example construction:
+
+```dois
+let p = Point(x = 2, y = 3);
+```
+
+Fields are accessed using dot (`.`) notation.
+
+```dois
+p.x
+p.y
+```
+
+Product types are similar to:
+
+- structs (C, Rust)
+- records (ML family)
+- objects without behavior (OO)
+
+---
+
+## Union Types
+
+Union types define a value that may be **one of several variants**.
+
+Syntax:
+
+```dois
+type Maybe<T> is
+  Some(T) | Nil
+end
+```
+
+Example values:
+
+```dois
+let a = Some(value = 10);
+let b = Nil;
+```
+
+Union types are commonly used for:
+
+- optional values
+- error handling
+- tagged variants
+
+---
+
+# Generics
+
+Types may be parameterized using **type variables**.
+
+```dois
+type Box<T> has
+  value : T
+end
+```
+
+Example:
+
+```dois
+let int_box : Box(Int) = Box(value = 10);
+
+# Type inference still works
+let str_box = Box(value = "hello");   
+```
+
+The compiler infers the type parameter automatically when possible.
+
+---
+
+## Pattern Matching With Types
+
+Union types are typically consumed using `match`.
+
+```dois
+match maybe
+  Some(v) => v
+  Nil => 0
+end
+```
+
+Pattern matching allows the compiler to ensure all variants are handled.
+
+Example:
+
+```dois
+let x = Some(value = 4);
+
+match x
+  Some(value = v) => v
+end
+```
+... will not compile, throwing an error for not handling the variant `Nil`
+
+---
+
+# Type Inference
+
+Dois uses **Hindley–Milner style inference**, meaning explicit type annotations are often unnecessary.
+
+Example:
+
+```dois
+let x = 10
+let y = x + 5
+```
+
+The compiler infers:
+
+```
+x : Int
+y : Int
+```
+
+Type annotations can still be provided for clarity.
+
+```dois
+let x : Int = 10
+```
+
+---
+
+# Summary
+
+The Dois type system includes:
+
+- primitive types
+- product types (`has`)
+- union types (`is`)
+- parametric generics
+- algebraic data types
+- Hindley–Milner type inference
+
+These features allow expressive data modeling while maintaining strong compile‑time guarantees.
+
+
+# Expressions
+
+Expressions in **Dois** represent computations that produce a value.  
+Unlike statements, which perform actions, expressions always evaluate to a result.
+
+Expressions are the primary building blocks of **functions**, **value bindings**, and many control-flow constructs. They are the *-is* half that "Dois" is named after.
+
+---
+
+##  Expression Basics
+
+An expression evaluates to a value.
+
+Examples:
+
+```dois
+10
+"hello"
+true
+x + y
+square$ (5)
+```
+
+Expressions can appear anywhere a value is expected.
+
+```dois
+let x = 10 + 2 * 3;
+let y = square$ (x);
+```
+
+---
+
+## Arithmetic Expressions
+
+Dois supports standard arithmetic operators.
+
+```dois
++     # addition
+-     # subtraction
+*     # multiplication
+/     # division
+%     # modulus
+```
+
+Example:
+
+```dois
+let a = 5 + 3;    # 8
+let b = 10 - 4;   # 6
+let c = 6 * 7;    # 42
+let d = 20 / 5;   # 4
+let e = 9 % 4;    # 1
+```
+
+Operator precedence follows typical mathematical rules:
+
+```
+1. *
+2. /
+3. %
+4. +
+5. -
+```
+
+Parentheses can be used to override precedence.
+
+```dois
+let result = (2 + 3) * 4;
+```
+
+---
+
+## Boolean Expressions
+
+Boolean expressions evaluate to `true` or `false`.
+
+Comparison operators:
+
+```dois
+==
+!=
+<
+<=
+>
+>=
+```
+
+Logical operators:
+
+```dois
+&&    # Logical 'and'
+||    # Logical 'or'
+!     # Logical 'not'
+```
+
+Example:
+
+```dois
+let a = x > 10;
+let b = y == 0;
+let c = a && b;
+let d = !c;
+```
+
+---
+
+## Function Call Expressions
+
+Functions are evaluated using the `$` applicator.
+
+```dois
+function_name$(arg1, arg2)
+```
+
+Example:
+
+```dois
+fn add(x: Int, y: Int) : Int
+    x + y
+end
+
+let result = add$(2, 3);
+```
+
+Arguments themselves may be expressions.
+
+```dois
+let r = add$(2 + 3, 4 * 5);
+```
+
+---
+
+## Field Access Expressions
+
+Fields of product types are accessed using dot (`.`) notation.
+
+```dois
+value.field
+```
+
+Example:
+
+```dois
+type Point has
+  x : Int
+  y : Int
+end
+
+let p = Point(x = 2, y = 3);
+let px = p.x;
+let py = p.y;
+```
+
+---
+
+## Constructor Expressions
+
+Values of product or union types can be constructed using constructor syntax.
+
+Example:
+
+```dois
+type Point has
+  x : Int
+  y : Int
+end
+
+let p = Point(x = 2, y = 3);
+```
+
+
+---
+
+## Conditional Expressions
+
+The `if` construct may be used as an expression.
+
+```dois
+if condition
+  expr1
+elif other_condition
+  expr2
+else
+  expr3
+end
+```
+
+Example:
+
+```dois
+let result : Int =
+  if   x > 0 =>  1
+  elif x < 0 => -1
+  else       =>  0
+  end
+```
+
+Each branch must evaluate to a compatible type.
+
+---
+
+## Match Expressions
+
+Pattern matching allows branching based on value structure.
+
+```dois
+match value
+    Pattern1 => expr1
+    Pattern2 => expr2
+end
+```
+
+Example:
+
+```dois
+match maybe_value
+    Some(value = v) => v,
+    Nil             => 0
+end
+```
+
+Match expressions evaluate to the value produced by the matched branch.
+
+
+---
+
+# Summary
+
+Expressions in Dois include:
+
+- literals
+- arithmetic operations
+- boolean logic
+- function calls
+- proc calls (see [Procedures](./procedures.md) for more info)
+- field access
+- type constructor expressions
+- conditional (`if`) expressions
+- `match` expressions
+
+Every expression evaluates to a value, making expressions the foundation of computation in the language.# Lexical Structure
+
+This section defines the basic textual elements of the Dois language: comments, identifiers, keywords, and literals.
+
+---
+
+##  Comments
+
+Comments are ignored by the compiler and are used to document code.
+
+Dois currently supports **single-line comments** using the `#` character.
+
+Everything following `#` on the same line is treated as a comment.
+
+Example:
+
+```dois
+# This is a comment
+let x = 10  # This is also a comment
+```
+
+---
+
+##  Identifiers
+
+Identifiers are names used for variables, functions, procedures, types, and other user-defined symbols.
+
+Identifiers must follow these rules:
+
+- They must begin with a letter (`a-z`, `A-Z`) or underscore (`_`).
+- They may contain letters, digits, and underscores.
+- They must not be a reserved keyword.
+
+Examples of valid identifiers:
+
+```dois
+x
+count
+_point
+value2
+```
+
+Examples of invalid identifiers:
+
+```dois
+2value
+let
+fn
+```
+
+---
+
+##  Keywords
+
+Keywords are reserved words in the language that have special meaning and cannot be used as identifiers.
+
+Common Dois keywords include:
+
+```
+fn
+proc
+let
+if
+else
+match
+while
+for
+return
+raise
+end
+```
+
+Additional keywords may be introduced as the language evolves.
+<!-- TODO add all keywords -->
+---
+
+##  Literals
+
+Literals are fixed values written directly in source code.
+
+Common literal forms include:
+
+### Integer literals
+
+```dois
+0
+42
+-7
+```
+
+### Boolean literals
+
+```dois
+true
+false
+```
+
+### Character literals
+
+Characters are enclosed in single quotes.
+
+```dois
+'c'
+'h'
+```
+
+### String literals
+
+Strings are enclosed in double quotes.
+
+```dois
+"hello"
+"dois"
+```
+
+Additional literal types may be added in future versions of the language.

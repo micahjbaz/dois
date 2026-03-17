@@ -1,0 +1,13 @@
+name: doisc
+version: 0.1.0
+
+authors:
+  - Micah Baz <micahjbaz@gmail.com>
+
+targets:
+  doisc:
+    main: src/main.cr
+
+crystal: '>= 1.16'
+
+license: MIT
