@@ -1,0 +1,8 @@
+/lib/
+/bin/
+/.shards/
+*.dwarf
+stats
+out.log
+.vscode/
+source.dois
