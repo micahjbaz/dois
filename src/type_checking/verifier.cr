@@ -66,7 +66,7 @@ module DoisC
       end
 
 
-      private def verify_match(expr : MatchExpression) : Types::Type
+      private def verify_match(expr : MatchExpression, expected_type : Types::Type? = nil) : Types::Type
         matched_type = verify_expression(expr.scrutinee)
 
         arm_types = expr.branches.map do |arm|
@@ -75,7 +75,7 @@ module DoisC
           # Bind pattern variables into scope based on matched type
           bind_pattern(arm.pattern, matched_type)
 
-          arm_type = verify_expression(arm.body)
+          arm_type = verify_expression(arm.body, expected_type)
 
           @ctx.exit_scope
           arm_type
@@ -195,7 +195,8 @@ module DoisC
 
         # Set expected return type in context
         @ctx.with_return_type(engine.parse_type_identifier(func.return_type_id, func.generics)) do
-          verify_expression(func.body)
+          expected = engine.parse_type_identifier(func.return_type_id, func.generics)
+          verify_expression(func.body, expected)
         end
 
         @ctx.exit_scope
@@ -234,7 +235,13 @@ module DoisC
 
       private def verify_binding(binding : Binding)
         name = binding.name
-        value_type = verify_expression(binding.value)
+        value_type =
+          if id = binding.type_id
+            annotation_type = engine.parse_type_identifier(id)
+            verify_expression(binding.value, annotation_type)
+          else
+            verify_expression(binding.value)
+          end
         resolved_type = value_type
 
         binding.type_id.try do |type_id|
@@ -255,7 +262,7 @@ module DoisC
       end
 
       # Verify an expression and return its resolved type
-      private def verify_expression(expr : Expression) : Types::Type
+      private def verify_expression(expr : Expression, expected_type : Types::Type? = nil) : Types::Type
         case expr
         when IntLiteral
           atomic_type("Int")
@@ -268,6 +275,11 @@ module DoisC
         when StringLiteral
           atomic_type("String")
         when NilLiteral
+          if expected_type && expected_type.is_a?(Types::NominalType)
+            if expected_type.definition.is_a?(Types::UnionTypeDefinition)
+              return expected_type
+            end
+          end
           atomic_type("Nil")
         when ArrayLiteral
           return verify_array_literal(expr)
@@ -282,9 +294,9 @@ module DoisC
         when Call
           return verify_call(expr)
         when IfExpression
-          return verify_if(expr)
+          return verify_if(expr, expected_type)
         when MatchExpression
-          return verify_match(expr)
+          return verify_match(expr, expected_type)
         when UnaryExpression
           return verify_unary(expr)
         when Reassignment
@@ -294,31 +306,30 @@ module DoisC
         end
       end
 
-      private def verify_if(expr : IfExpression) : Types::Type
+      private def verify_if(expr : IfExpression, expected_type : Types::Type? = nil) : Types::Type
         branch_types = expr.branches.map do |branch|
           cond_type = verify_expression(branch.condition)
           unless cond_type.is_a?(Types::NominalType) && cond_type.definition.name == "Bool"
             raise error("If condition must be a Bool", branch.condition.source_location)
           end
 
-          verify_expression(branch.body)
+          verify_expression(branch.body, expected_type)
         end
 
         # Verify the else branch if present
-        else_type = (body = expr.else_body) ? verify_expression(body) : nil
+        else_type = (body = expr.else_body) ? verify_expression(body, expected_type) : nil
 
         # Combine all branch types
         all_types = branch_types
         all_types << else_type if else_type
 
         result_type = all_types.first
+
         all_types.each do |t|
-          unless engine.is_assignable?(t, result_type) || engine.is_assignable?(result_type, t)
-            raise error("If branches have mismatched types: #{t} vs #{result_type}", expr.source_location)
-          end
+          engine.unify(result_type, t, expr.source_location)
         end
 
-        result_type
+        engine.prune(result_type)
       end
 
       private def atomic_type(name : String) : Types::NominalType
@@ -351,7 +362,7 @@ module DoisC
           if type_ref
             type_def = global.type_definition(type_ref)
             if type_def.is_a?(Types::ProductTypeDefinition)
-              type = Types::NominalType.new(type_def, type_def.generics.map { |gen| Types::GenericTypeParameter.new(gen).as(Types::Type) })
+              type = Types::NominalType.new(type_def, type_def.generics.map { |_| engine.fresh_type_variable.as(Types::Type) })
             end
           end
           # Check if it's a global function or procedure
@@ -497,6 +508,8 @@ module DoisC
         field_types.each do |field_name, field_type_ref|
           arg_expr = arg_map[field_name]
           param_type = engine.resolve_reference_to_type(field_type_ref, generic_scope)
+          param_type = engine.instantiate(param_type)
+
           arg_type =
             case arg_expr
             when IdentifierExpression
@@ -511,7 +524,7 @@ module DoisC
             else
               verify_expression(arg_expr)
             end
-
+          arg_type = engine.instantiate(arg_type)
           engine.unify(param_type, arg_type, call_expr.source_location)
         end
 
@@ -532,12 +545,9 @@ module DoisC
 
         # Enter a fresh generic scope for this call
         callee_type = engine.instantiate(callee_type)
-        puts "____"
         # Verify arguments and unify with parameter types
         call_expr.arguments.each_with_index do |arg_expr, i|
           arg_type = verify_expression(arg_expr)
-          puts "ARG TYPE: #{arg_type.to_s}"
-          puts "PARAM TYPE: #{callee_type.param_types[i].to_s}"
           engine.unify(callee_type.param_types[i], arg_type, arg_expr.source_location)
         end
 

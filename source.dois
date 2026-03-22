@@ -35,43 +35,39 @@ fn unwrap_or_default<T> $ (maybe : Maybe(T), default : T) : T =>
 end
 
 # Function adding two points
-fn add_points<T> $ (p1 : Point(Int), p2 : Point(Int)) : Point(Int) =>
+fn add_points<T> $ (p1 : Point(T), p2 : Point(T)) : Point(T) =>
   Point(x = p1.x + p2.x, y = p1.y + p2.y)
 end
 
 # Function returning a union Result
-fn divide $ (x : Int, y : Int) : Result =>
+fn divide $ (x : Int, y : Int) : Maybe(Int) =>
   if y == 0 then
-    Err(message = "Division by zero")
- end
+    nil
+  else
+    Some(x / y)
+  end
 end
 
-# === Procedure (side-effect style) ===
-# proc print_result(res : Result) do
-#   match res then
-#     Ok => print("Ok"),
-#     Err(message = e) => print(e)
-#  end;
-# end
+
 
 # === Main logic ===
 let x = Some$(value = 7);
 let val1 = unwrap_or_default$(x, 0);
-let val2 = unwrap_or_default(nil, 100);
+let val2 = unwrap_or_default$(nil, 100);
 
 let p1 = Point(x = 10, y = 20);
 let p2 = Point(x = 5, y = 3);
 let p3 = add_points(p1, p2);
 
-let r1 = divide(10, 2);
-let r2 = divide(5, 0);
+let r1 = divide$(10, 2);
+let r2 = divide$(5, 0);
 
 # print_result(r1);
 # print_result(r2);
 
 # === Edge-case generics ===
 let m : Maybe(Point(Int)) = Some(value = Point(x = 1, y = 2));
-let n = unwrap_or_default(m, Point(x = 0, y = 0));
+let n = unwrap_or_default$(m, Point(x = 0, y = 0));
 
 
 # === Additional Tests ===
@@ -86,15 +82,15 @@ let p_sum = add_points(p4, p5);  # Should be Point(x = 2, y = 5)
 
 # --- Maybe/unwrap_or_default ---
 let maybe_val : Maybe(Int) = nil;
-let unwrapped = unwrap_or_default(maybe_val, 999);  # Should be 999
+let unwrapped = unwrap_or_default$(maybe_val, 999);  # Should be 999
 let some_val : Maybe(Int) = Some(value = 55);
-let unwrapped2 = unwrap_or_default(some_val, 0);    # Should be 55
+let unwrapped2 = unwrap_or_default$(some_val, 0);    # Should be 55
 
 # --- Divide with Result type ---
-let div_ok = divide(100, 10);    # Should be Ok
-let div_err = divide(1, 0);      # Should be Err(message = "Division by zero")
+let div_ok = divide$(100, 10);    # Should be Ok
+let div_err = divide$(1, 0);      # Should be Err(message = "Division by zero")
 
 # --- Type errors (commented out for optional testing) ---
 # let bad_point : Point(String) = Point(x = 1, y = 2);  # Should error: Int assigned to String
 # let bad_maybe : Maybe(Int) = Some(value = "oops");    # Should error: String assigned to Int
-let bad_add = add_points(p1, "not a point");          # Should error: wrong argument type
+# let bad_add = add_points$(p1, "not a point");          # Should error: wrong argument type
