@@ -24,14 +24,14 @@ Use `var` to declare an identifier as a variable value.
 var counter = 0;
 counter = counter + 1;
 
-var uninitialized : Int; # Uninitialized variables are allowed, but discouraged.
+var uninitialized : Int; # Uninitialized variables are allowed, but not encouraged.
 ```
 
 ---
 
 ## Assignments
 
-Assignment statements update the value of a mutable variable.
+Assignment statements update the value of a variable.
 
 ```dois
 var total = 42;

@@ -86,15 +86,15 @@ Functions may also accept type parameters.
 
 ```dois
 fn identity<T>(value: T) : T
-    value
+  value
 end
 ```
 
 Example usage:
 
 ```dois
-let a = identity$(10)
-let b = identity$("hello")
+let a = identity$(10);
+let b = identity$("hello");
 ```
 
 Type inference determines the concrete type of `T` automatically.
@@ -107,8 +107,8 @@ Definitions may include multiple type parameters.
 
 ```dois
 type Pair<A, B> has
-    first  : A
-    second : B
+  first  : A,
+  second : B
 end
 ```
 
@@ -152,15 +152,3 @@ x : Int
 ```
 
 ---
-
-## Summary
-
-Generics in Dois provide:
-
-- parametric polymorphism
-- reusable type definitions
-- reusable function definitions
-- strong compile-time type safety
-- integration with Hindley–Milner inference
-
-Generics are widely used when defining data structures such as `Maybe`, `Result`, `Pair`, and other reusable abstractions.

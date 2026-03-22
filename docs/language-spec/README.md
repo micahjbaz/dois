@@ -5,6 +5,7 @@
 - [Expressions](expressions.md)
 - [Control Flow](control-flow.md)
 - [Functions](functions.md)
+- [References](references.md)
 - [Procedures](procedures.md)
 - [Types](types.md)
 - [Generics](generics.md)

@@ -1,6 +1,6 @@
 # Lexical Structure
 
-This section defines the basic textual elements of the Dois language: comments, identifiers, keywords, and literals.
+This section defines the basic textual elements of **Dois**: comments, identifiers, keywords, and literals.
 
 ---
 
@@ -8,7 +8,7 @@ This section defines the basic textual elements of the Dois language: comments, 
 
 Comments are ignored by the compiler and are used to document code.
 
-Dois currently supports **single-line comments** using the `#` character.
+Dois supports **single-line comments** using the `#` character.
 
 Everything following `#` on the same line is treated as a comment.
 
@@ -16,7 +16,7 @@ Example:
 
 ```dois
 # This is a comment
-let x = 10  # This is also a comment
+let x = 10;  # This is also a comment
 ```
 
 ---
@@ -65,6 +65,7 @@ else
 match
 while
 for
+do
 return
 raise
 end

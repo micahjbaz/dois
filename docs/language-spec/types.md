@@ -4,14 +4,6 @@ Types in **Dois** describe the shape of values and enable the compiler to verify
 
 Dois uses **static typing** with **Hindley–Milner style type inference**, meaning many types can be inferred automatically while still maintaining strong compile‑time guarantees.
 
-The type system supports:
-
-- primitive types
-- parametric generics
-- algebraic data types (ADTs)
-- product types (records)
-- union types (variants)
-
 ---
 
 ## Primitive Types

@@ -1,8 +1,7 @@
 
 # Modules
-## Overview
 
-**Modules** (or *libraries*)are the fundamental building blocks of a Dois program. Each module encapsulates related code and data. Modules can import other modules/libraries to use their functionality.
+**Modules** encapsulate related code and data. Modules can import other modules/libraries to use their functionality.
 
 ## Defining a Module
 
