@@ -30,23 +30,35 @@ module DoisC
         case ref
         when Types::NominalTypeReference
           # Only NominalTypeReference has a name
-          
           if (g = generic_scope[ref.name]?)
             return g
           end
-          
+
           type_def = global.type_definition(ref) ||
             raise "Unknown type reference #{ref.name}"
 
-          instantiate_type(type_def)
-
-        when Types::FunctionTypeReference
-          # FunctionTypeReference has param_type_refs and return_type_ref
-          param_types = ref.param_type_refs.keys.map do |key|
-            resolve_reference_to_type(ref.param_type_refs[key], generic_scope)
+          # Resolve type arguments recursively
+          resolved_args = ref.type_args.map do |arg_ref|
+            resolve_reference_to_type(arg_ref, generic_scope).as(Types::Type)
           end
 
-          return_type = resolve_reference_to_type(ref.return_type_ref, generic_scope)
+          instantiate_type(type_def, resolved_args)
+
+        when Types::FunctionTypeReference
+          # Create a fresh substitutions hash for function generics
+          substitutions = Hash(String, DoisC::Types::Type).new
+          generic_scope.each do |k, v|
+            substitutions[k] = v
+          end
+          ref.generics.each do |gen|
+            substitutions[gen] = fresh_type_variable
+          end
+
+          param_types = ref.param_type_refs.keys.map do |key|
+            resolve_reference_to_type(ref.param_type_refs[key], substitutions).as(Types::Type)
+          end
+
+          return_type = resolve_reference_to_type(ref.return_type_ref, substitutions)
 
           Types::FunctionType.new(param_types, return_type)
 
@@ -259,12 +271,14 @@ module DoisC
 
         # nominal types
         if a.is_a?(Types::NominalType) && b.is_a?(Types::NominalType)
+          # If definitions differ, check for union/variant relationships
           if a.definition != b.definition
             # check if right is a variant of left union
             if a.definition.is_a?(Types::UnionTypeDefinition)
               union_def = a.definition.as(Types::UnionTypeDefinition)
               if union_def.variants.any? { |v| v.name == b.definition.name }
-                b = Types::NominalType.new(union_def, b.type_args)
+                # IMPORTANT: propagate union type args, not variant args
+                b = Types::NominalType.new(union_def, a.type_args)
               end
             end
 
@@ -272,24 +286,57 @@ module DoisC
             if b.definition.is_a?(Types::UnionTypeDefinition)
               union_def = b.definition.as(Types::UnionTypeDefinition)
               if union_def.variants.any? { |v| v.name == a.definition.name }
-                a = Types::NominalType.new(union_def, a.type_args)
+                # IMPORTANT: propagate union type args
+                a = Types::NominalType.new(union_def, b.type_args)
               end
             end
+          end
 
-            if a.definition.name != b.definition.name
-              raise error("Type mismatch #{a.to_s} is not #{b.to_s}", loc)
+          # If both now refer to same union, ensure type args unify
+          if a.definition == b.definition && a.definition.is_a?(Types::UnionTypeDefinition)
+            a.type_args.each_with_index do |t, i|
+              unify(t, b.type_args[i], loc)
             end
+            return
           end
 
-          if a.type_args.size != b.type_args.size
-            raise error("Type argument mismatch #{a.to_s} vs #{b.to_s}", loc)
+          # If the names match, allow generic-to-instantiated unification
+          if a.definition.name == b.definition.name
+            # If the right-hand side has type arguments, bind them to the generics of the left-hand side
+            if !b.type_args.empty?
+              generics = case defn = a.definition
+              when Types::ProductTypeDefinition
+                defn.generics
+              when Types::UnionTypeDefinition
+                defn.generics
+              else
+                [] of String
+              end
+              # Use a substitutions hash to bind generics to type args
+              substitutions = {} of String => Types::Type
+              generics.each_with_index do |gen, i|
+                substitutions[gen] = b.type_args[i]
+              end
+              # Now instantiate a with these substitutions
+              instantiated_a = Types::NominalType.new(a.definition, generics.map { |gen| substitutions[gen] })
+              # Unify the instantiated version of a with b
+              instantiated_a.type_args.each_with_index do |t, i|
+                unify(t, b.type_args[i], loc)
+              end
+              return
+            end
+            # If both are generic (no type args), or both are fully instantiated, just unify type args as before
+            if a.type_args.size != b.type_args.size
+              raise error("Type argument mismatch #{a.to_s} vs #{b.to_s}", loc)
+            end
+            a.type_args.each_with_index do |t, i|
+              unify(t, b.type_args[i], loc)
+            end
+            return
           end
 
-          a.type_args.each_with_index do |t, i|
-            unify(t, b.type_args[i], loc)
-          end
-
-          return
+          # If names differ, it's a type mismatch
+          raise error("Type mismatch #{a.to_s} is not #{b.to_s}", loc)
         end
 
         # function types
