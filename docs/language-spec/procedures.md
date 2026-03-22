@@ -133,13 +133,7 @@ always_fails()?
 
 ## Procedures vs Functions
 
-| Feature | Function (`fn`) | Procedure (`proc`) |
-|--------|----------------|--------------------|
-| Purity | Pure | Impure |
-| Returns | Anything | `Result` |
-| Usage | Computation | Side effects |
 
-Functions are intended for **deterministic computation**, while procedures are used for **effects and system interaction**.
 
 ---
 

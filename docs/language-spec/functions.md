@@ -2,20 +2,14 @@
 
 Functions in **Dois** are expressions that can be called, or *evaluated*.
 
-## Syntax
+## Defining a Function
 
 ```dois
-fn function_name<T>(param1: Type1, param2: Type2, ...) : ReturnType
-  <expression>
+fn function_name<T, ...>(param1: Type1, param2: Type2, ...) : ReturnType
+  # expression body  
 end
 ```
-<!-- TODO get rid of => and $ needed for fn declaration-->
-
-- `fn` – keyword to declare a function.
-- `<T>` – optional generic type parameters.
-- `param: Type` – parameters with their types annotated.
-- `: ReturnType` – annotates the type of value the function evaluates to.
-- `<expression>` – the expression to be evaluated.
+<!-- TODO get rid of => and $ needed for fn declaration in lang-->
 
 ### Examples
 
@@ -33,7 +27,7 @@ fn square(x: Int) : Int
 end
 ```
 
-## Type Inference
+## Return Type Inference
 
 Parameters and return types can sometimes be inferred if not explicitly provided, but explicit types improve readability and error reporting.
 
@@ -45,7 +39,7 @@ end
 
 ## Generics
 
-Functions can accept generic parameters to operate on multiple types.
+Functions can accept optional generic parameters to operate on multiple types.
 
 ```dois
 fn swap$<T>(a: T, b: T) : (T, T)
@@ -54,7 +48,12 @@ end
 ```
 <!-- TODO have to add tuple typing -->
 
-## Best Practices
+## Calling Functions
 
-- Use descriptive names for both the function and parameters.
-- Prefer explicit type annotations for public APIs.
+Functions are called, or *evaluated* using the `$` operator.
+
+```dois
+let sum = add$(1, 2);
+let self = identity$(12);
+let swapped = swap$(("first", "second"));
+```

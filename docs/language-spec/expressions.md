@@ -27,7 +27,7 @@ Expressions can appear anywhere a value is expected.
 
 ```dois
 let x = 10 + 2 * 3;
-let y = square$ (x);
+let y = square$(x);
 ```
 
 ---
@@ -40,7 +40,8 @@ Dois supports standard arithmetic operators.
 +     # addition
 -     # subtraction
 *     # multiplication
-/     # division
+/     # integer division
+//    # float division
 %     # modulus
 ```
 
@@ -50,24 +51,28 @@ Example:
 let a = 5 + 3;    # 8
 let b = 10 - 4;   # 6
 let c = 6 * 7;    # 42
-let d = 20 / 5;   # 4
-let e = 9 % 4;    # 1
+let d = 20 / 3;   # 6
+let e = 20 // 3;  # 6.66...
+let f = 9 % 4;    # 1
 ```
 
 Operator precedence follows typical mathematical rules:
 
 ```
-1. *
+1. *, 
 2. /
 3. %
 4. +
 5. -
 ```
+1. `*`, `/`, `//`
+2. `%`
+3. `+`, `-`
 
 Parentheses can be used to override precedence.
 
 ```dois
-let result = (2 + 3) * 4;
+let result = (2 + 3) * 4; # 20
 ```
 
 ---
@@ -106,28 +111,20 @@ let d = !c;
 
 ---
 
-## Function Call Expressions
+## Function/Procedure Call Expressions
 
-Functions are evaluated using the `$` applicator.
-
-```dois
-function_name$(arg1, arg2)
-```
-
-Example:
+A call to eithe a function or procedure is an expression
 
 ```dois
-fn add(x: Int, y: Int) : Int
-    x + y
-end
-
-let result = add$(2, 3);
+let f_res = my_function$(arg1, arg2);
+let p_res = my_procedure();
 ```
+
 
 Arguments themselves may be expressions.
 
 ```dois
-let r = add$(2 + 3, 4 * 5);
+let r = add$(2 + 3, 4 * foo$(6));
 ```
 
 ---
@@ -222,6 +219,51 @@ end
 ```
 
 Match expressions evaluate to the value produced by the matched branch.
+
+
+## References
+
+Reference operations are expressions that interact with mutable storage.
+
+### Read Expression
+
+```
+@x
+```
+
+- Evaluates to the value stored inside a reference `x`
+- If `x : Ref<T>`, then `@x : T`
+
+Example:
+
+```
+var r = ref(10);
+let v = @r;  # 10
+```
+
+### Write Expression
+
+```
+x := value
+```
+
+- Updates the value stored in reference `x`
+- `x` must be of type `Ref<T>`
+- `value` must be of type `T`
+- Mutation via `:=` is only allowed in procedural contexts (see Procedures)
+
+Example:
+
+```
+var r = ref(10);
+r := 20;
+```
+
+### Notes
+
+- References represent mutable storage locations
+- `@x` and `x := v` are expressions in the language syntax, but mutation semantics are restricted by context
+- See [References](../runtime/references.md) for the full specification of references and mutability rules
 
 
 ---
