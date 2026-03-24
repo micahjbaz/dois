@@ -27,8 +27,8 @@ begin
 
 rescue parse_error : DoisC::Parsing::ParseError
   puts "#{source_path}:#{parse_error.message}".colorize(220, 150, 150)
-  # parse_error.put_backtrace
+  parse_error.put_backtrace
 rescue type_error : DoisC::TypeChecking::TypeError
   puts "#{source_path}:#{type_error.to_s}".colorize(220, 150, 150)
-  # type_error.put_backtrace
+  type_error.put_backtrace
 end

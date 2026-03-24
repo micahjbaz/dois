@@ -539,19 +539,22 @@ module DoisC
         # Resolve callee type
         callee_type = verify_identifier(call_expr.callee)
 
-        unless callee_type.is_a?(Types::FunctionType)
-          raise error("Expected a function", call_expr.source_location)
-        end
-
         # Enter a fresh generic scope for this call
         callee_type = engine.instantiate(callee_type)
+
+        unless callee_type.is_a?(Types::FunctionType)
+          raise error("Expected a function after instantiation", call_expr.source_location)
+        end
+
+        func_type = callee_type.as(Types::FunctionType)
+
         # Verify arguments and unify with parameter types
         call_expr.arguments.each_with_index do |arg_expr, i|
           arg_type = verify_expression(arg_expr)
-          engine.unify(callee_type.param_types[i], arg_type, arg_expr.source_location)
+          engine.unify(func_type.param_types[i], arg_type, arg_expr.source_location)
         end
 
-        engine.prune(callee_type.return_type)
+        engine.prune(func_type.return_type)
       end
 
       
