@@ -70,6 +70,23 @@ module DoisC
       # Determines whether a type `from` can be assigned to type `to`.
       # Handles exact match, generic parameters, unions, nil, and function types.
       def is_assignable?(from : Types::Type, to : Types::Type, bindings = {} of String => Types::Type) : Bool
+        if from.is_a?(Types::TypeVariable)
+          if from.instance
+            return is_assignable?(from.instance.not_nil!, to, bindings)
+          end
+
+          # Unbound type variable can become anything
+          return true
+        end
+
+        if to.is_a?(Types::TypeVariable)
+          if to.instance
+            return is_assignable?(from, to.instance.not_nil!, bindings)
+          end
+
+          # Allow assignment into an unbound variable
+          return true
+        end
         # Exact match
         return true if from == to
 
@@ -180,8 +197,41 @@ module DoisC
       # Instantiate a generalized type by replacing GenericTypeParameters with fresh TypeVariables.
       # This happens when a variable is read from the environment.
       def instantiate(type : Types::Type) : Types::Type
-        mapping = {} of String => Types::TypeVariable
-        replace_generics_with_fresh(type, mapping)
+        case type
+        when Types::GenericTypeParameter
+          fresh_type_variable
+
+        when Types::NominalType
+          # If the definition has generics but no type args, create fresh ones
+          generics = case defn = type.definition
+          when Types::ProductTypeDefinition
+            defn.generics
+          when Types::UnionTypeDefinition
+            defn.generics
+          else
+            [] of String
+          end
+
+          if generics.empty?
+            return type
+          end
+
+          mapping = {} of String => Types::TypeVariable
+          generics.each do |gen|
+            mapping[gen] = fresh_type_variable
+          end
+
+          new_args = generics.map { |gen| mapping[gen].as(Types::Type) }
+          Types::NominalType.new(type.definition, new_args)
+
+        when Types::FunctionType
+          params = type.param_types.map { |t| instantiate(t).as(Types::Type) }
+          ret = instantiate(type.return_type)
+          Types::FunctionType.new(params, ret)
+
+        else
+          type
+        end
       end
 
       # Replace TypeVariables using a mapping.
@@ -226,11 +276,26 @@ module DoisC
 
       # Hindley–Milner helper functions as instance methods
       def prune(type : Types::Type) : Types::Type
-        if type.is_a?(Types::TypeVariable) && type.instance
-          type.instance = prune(type.instance.not_nil!)
-          return type.instance.not_nil!
+        case type
+        when Types::TypeVariable
+          if type.instance
+            type.instance = prune(type.instance.not_nil!)
+            return type.instance.not_nil!
+          end
+          type
+
+        when Types::NominalType
+          new_args = type.type_args.map { |t| prune(t) }
+          Types::NominalType.new(type.definition, new_args)
+
+        when Types::FunctionType
+          params = type.param_types.map { |t| prune(t) }
+          ret = prune(type.return_type)
+          Types::FunctionType.new(params, ret)
+
+        else
+          type
         end
-        type
       end
 
       def occurs_in_type(var : Types::TypeVariable, type : Types::Type) : Bool
@@ -302,30 +367,6 @@ module DoisC
 
           # If the names match, allow generic-to-instantiated unification
           if a.definition.name == b.definition.name
-            # If the right-hand side has type arguments, bind them to the generics of the left-hand side
-            if !b.type_args.empty?
-              generics = case defn = a.definition
-              when Types::ProductTypeDefinition
-                defn.generics
-              when Types::UnionTypeDefinition
-                defn.generics
-              else
-                [] of String
-              end
-              # Use a substitutions hash to bind generics to type args
-              substitutions = {} of String => Types::Type
-              generics.each_with_index do |gen, i|
-                substitutions[gen] = b.type_args[i]
-              end
-              # Now instantiate a with these substitutions
-              instantiated_a = Types::NominalType.new(a.definition, generics.map { |gen| substitutions[gen] })
-              # Unify the instantiated version of a with b
-              instantiated_a.type_args.each_with_index do |t, i|
-                unify(t, b.type_args[i], loc)
-              end
-              return
-            end
-            # If both are generic (no type args), or both are fully instantiated, just unify type args as before
             if a.type_args.size != b.type_args.size
               raise error("Type argument mismatch #{a.to_s} vs #{b.to_s}", loc)
             end
