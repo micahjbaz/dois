@@ -162,4 +162,113 @@ describe DoisC::TypeChecking::TypeEngine do
 
     engine.is_assignable?(p1, p2).should be_false
   end
+  it "propagates unification through nested generics" do
+    global = G.new
+    engine = TE.new(global)
+
+    t = engine.fresh_type_variable
+    int_type = engine.parse_type_identifier(type_id("Int"))
+
+    # simulate something like List(T) vs List(Int) via direct variable unify
+    engine.unify(t, int_type, source_location)
+
+    engine.prune(t).should eq(int_type)
+  end
+
+  it "instantiate replaces generic parameters with fresh variables" do
+    global = G.new
+
+    global.register_type("Box")
+    box_ref = global.type_reference("Box").as(T::NominalTypeReference)
+    t_ref = T::NominalTypeReference.new("T", [] of T::TypeReference)
+
+    box_def = T::ProductTypeDefinition.new(
+      "Box",
+      ["T"],
+      { "value" => t_ref },
+      box_ref
+    )
+    global.define_type(box_ref, box_def)
+
+    engine = TE.new(global)
+
+    generic = T::NominalType.new(
+      box_def,
+      [T::GenericTypeParameter.new("T")] of T::Type
+    )
+
+    instantiated = engine.instantiate(generic).as(T::NominalType)
+
+    instantiated.type_args.size.should eq(1)
+    instantiated.type_args[0].should be_a(T::TypeVariable)
+  end
+
+  it "fails assignability when generic arity mismatches" do
+    global = G.new
+
+    global.register_type("Box")
+    box_ref = global.type_reference("Box").as(T::NominalTypeReference)
+    t_ref = T::NominalTypeReference.new("T", [] of T::TypeReference)
+
+    box_def = T::ProductTypeDefinition.new(
+      "Box",
+      ["T"],
+      { "value" => t_ref },
+      box_ref
+    )
+    global.define_type(box_ref, box_def)
+
+    engine = TE.new(global)
+
+    int_type = engine.parse_type_identifier(type_id("Int"))
+
+    # Missing type arg
+    bad = T::NominalType.new(box_def, [] of T::Type)
+    good = T::NominalType.new(box_def, [int_type] of T::Type)
+
+    engine.is_assignable?(bad, good).should be_false
+  end
+
+  it "unifies multiple occurrences of same generic" do
+    global = G.new
+    engine = TE.new(global)
+
+    t = engine.fresh_type_variable
+    int_type = engine.parse_type_identifier(type_id("Int"))
+
+    # simulate T used twice (like Point(T, T))
+    engine.unify(t, int_type, source_location)
+    engine.unify(t, int_type, source_location)
+
+    engine.prune(t).should eq(int_type)
+  end
+
+  it "does not allow conflicting unification" do
+    global = G.new
+    engine = TE.new(global)
+
+    t = engine.fresh_type_variable
+    int_type = engine.parse_type_identifier(type_id("Int"))
+    string_type = engine.parse_type_identifier(type_id("String"))
+
+    engine.unify(t, int_type, source_location)
+
+    expect_raises(Exception) do
+      engine.unify(t, string_type, source_location)
+    end
+  end
+
+  it "prune follows chained substitutions" do
+    global = G.new
+    engine = TE.new(global)
+
+    t1 = engine.fresh_type_variable
+    t2 = engine.fresh_type_variable
+    int_type = engine.parse_type_identifier(type_id("Int"))
+
+    engine.unify(t1, t2, source_location)
+    engine.unify(t2, int_type, source_location)
+
+    engine.prune(t1).should eq(int_type)
+  end
 end
