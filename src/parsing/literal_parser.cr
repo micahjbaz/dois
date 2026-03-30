@@ -48,7 +48,7 @@ module DoisC
 
       def parse_map_literal(location : SourceLocation) : MapLiteral
         mapping = Hash(Expression, Expression).new
-        unless peek.type == TokenType::R_BRACK
+        unless peek.type == TokenType::R_BRACE
           key = parse_expression
           consume(TokenType::ARROW, "expected =>, set literals not supported")
           mapping[key] = parse_expression
