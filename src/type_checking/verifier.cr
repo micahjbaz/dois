@@ -265,15 +265,15 @@ module DoisC
       private def verify_expression(expr : Expression, expected_type : Types::Type? = nil) : Types::Type
         case expr
         when IntLiteral
-          atomic_type("Int")
+          return expr.resolved_type = atomic_type("Int")
         when FloatLiteral
-          atomic_type("Float")
+          return expr.resolved_type = atomic_type("Float")
         when BoolLiteral
-          atomic_type("Bool")
+          return expr.resolved_type = atomic_type("Bool")
         when CharLiteral
-          atomic_type("Char")
+          return expr.resolved_type = atomic_type("Char")
         when StringLiteral
-          atomic_type("String")
+          return expr.resolved_type = atomic_type("String")
         when NilLiteral
           if expected_type && expected_type.is_a?(Types::NominalType)
             if expected_type.definition.is_a?(Types::UnionTypeDefinition)
@@ -282,23 +282,23 @@ module DoisC
           end
           atomic_type("Nil")
         when ArrayLiteral
-          return verify_array_literal(expr)
+          return verify_array_literal(expr, expected_type)
         when TupleLiteral
           return verify_tuple_literal(expr)
         when MapLiteral
-          return verify_map_literal(expr)
+          return verify_map_literal(expr, expected_type)
         when IdentifierExpression
-          return verify_identifier_expression(expr)
+          return expr.resolved_type = verify_identifier_expression(expr)
         when BinaryExpression
-          return verify_binary(expr)
+          return expr.resolved_type = verify_binary(expr)
         when Call
-          return verify_call(expr)
+          return expr.resolved_type = verify_call(expr)
         when IfExpression
-          return verify_if(expr, expected_type)
+          return expr.resolved_type = verify_if(expr, expected_type)
         when MatchExpression
-          return verify_match(expr, expected_type)
+          return expr.resolved_type = verify_match(expr, expected_type)
         when UnaryExpression
-          return verify_unary(expr)
+          return expr.resolved_type = verify_unary(expr)
         when Reassignment
           return verify_reassignment(expr)
         else
@@ -690,10 +690,18 @@ module DoisC
         atomic_type("Nil")
       end
 
-      private def verify_array_literal(expr : ASTData::ArrayLiteral) : Types::Type
-        return atomic_type("Array") if expr.items.empty?
+      private def verify_array_literal(expr : ASTData::ArrayLiteral, expected_type : Types::Type? = nil) : Types::Type
+        if expr.items.empty?
+          if expected_type && expected_type.is_a?(Types::NominalType) &&
+             expected_type.definition.name == "Array" &&
+             expected_type.type_args.size == 1
+            return expected_type
+          else
+            raise error("Cannot infer type of empty array without context", expr.source_location)
+          end
+        end
 
-        item_types = expr.items.map { |item| verify_expression(item) }.as(Array(Types::Type))
+        item_types = expr.items.map { |item| verify_expression(item).as(Types::Type) }
         first_type = item_types.first
 
         item_types.each_with_index do |t, i|
@@ -717,7 +725,17 @@ module DoisC
         Types::NominalType.new(tuple_def, item_types)
       end
 
-      private def verify_map_literal(expr : ASTData::MapLiteral) : Types::Type
+      private def verify_map_literal(expr : ASTData::MapLiteral, expected_type : Types::Type? = nil) : Types::Type
+        if expr.mappings.empty?
+          if expected_type && expected_type.is_a?(Types::NominalType) &&
+             expected_type.definition.name == "Map" &&
+             expected_type.type_args.size == 2
+            return expected_type
+          else
+            raise error("Cannot infer type of empty map without context", expr.source_location)
+          end
+        end
+
         key_types = expr.mappings.keys.map { |k| verify_expression(k).as(Types::Type) }
         value_types = expr.mappings.values.map { |v| verify_expression(v).as(Types::Type) }
 
