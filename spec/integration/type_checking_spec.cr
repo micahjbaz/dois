@@ -282,4 +282,247 @@ describe DoisC::TypeChecking do
     DOIS
   end
 
+  context "tags ast with type" do
+    it "for binding" do
+      ast = check <<-DOIS
+        let x : Int = 1;
+      DOIS
+      main_proc = unwrap_main(ast)
+      binding = main_proc.statements.first.as(AST::Binding)
+      binding.resolved_type.should be_a(T::NominalType)
+    end
+
+    it "with simple inference" do
+      ast = check <<-DOIS
+        let x = 1;
+      DOIS
+      main_proc = unwrap_main(ast)
+      binding = main_proc.statements.first.as(AST::Binding)
+      binding.resolved_type.should be_a(T::NominalType)
+    end
+
+    it "with literal atomics" do
+      ast = check <<-DOIS
+        let a = 1;
+        let b = 12.3;
+        let c = nil;
+        let d = 'c';
+        let e = "hello";
+      DOIS
+      main_proc = unwrap_main(ast)
+      main_proc.statements.size.should eq(5)
+      main_proc.statements.each.with_index do |s, i|
+        binding = s.as(AST::Binding)
+        type = binding.resolved_type.as(T::NominalType)
+        type.definition.should be_a(T::AtomicTypeDefinition)
+        expected_types = %w(Int Float Nil Char String)
+        type.to_s.should eq(expected_types[i])
+      end
+    end
+
+    it "with literal collections" do
+      ast = check <<-DOIS
+        let a = [1, 2, 3];
+        let b = ('c', 2.0);
+        let c = {0 => "hello", 1 => "world"};
+      DOIS
+      main_proc = unwrap_main(ast)
+      main_proc.statements.size.should eq(3)
+      main_proc.statements.each.with_index do |s, i|
+        binding = s.as(AST::Binding)
+        type = binding.resolved_type.as(T::NominalType)
+        type.definition.should be_a(T::AtomicTypeDefinition)
+        expected_types = ["Array(Int)", "Tuple(Char, Float)", "Map(Int, String)"]
+        type.to_s.should eq(expected_types[i])
+      end
+    end
+
+    it "for binary expressions" do
+      ast = check <<-DOIS
+        1 + 2;
+      DOIS
+      unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Int")
+    end
+
+    it "for function calls" do
+      ast = check <<-DOIS
+        fn add $ (a : Int, b : Int) : Int =>
+          a + b
+        end
+
+        add$(1, 2);
+      DOIS
+      unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Int")
+    end
+
+    it "for generic calls" do
+      ast = check <<-DOIS
+        fn id<T> $ (x : T) : T =>
+          x
+        end
+
+        id$(5);
+      DOIS
+      unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Int")
+    end
+
+    it "for constructor calls" do
+      ast = check <<-DOIS
+        type Point<T> has x : T, y : T end
+
+        Point(x = 1, y = 2);
+      DOIS
+      unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Point(Int)")
+    end
+
+    it "recursively" do
+      ast = check <<-DOIS
+        (22.6 - 2) + (2.01 * (3 / 4));
+      DOIS
+      walk_expressions(unwrap_expr_stmt(ast)) do |expr|
+        puts "checking #{expr.to_s}"
+        expr.resolved_type.should_not be_nil
+      end
+    end
+
+    # BUG if expression statement not supported yet
+    # it "for if expressions" do
+    #   ast = check <<-DOIS
+    #     if true then 1 else 0 end;
+    #   DOIS
+    #   unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Int")
+    # end
+
+    it "for match expressions" do
+      ast = check <<-DOIS
+        match 0 then
+          0 => 1,
+          1 => 10
+        end;
+      DOIS
+      unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Int")
+    end
+
+    it "for unary expressions" do
+      ast = check <<-DOIS
+        -10;
+      DOIS
+      unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Int")
+    end
+
+    it "for identifier expressions" do
+      ast = check <<-DOIS
+        let x : Int = 10;
+        x;
+      DOIS
+      unwrap_expr_stmt(ast).resolved_type.to_s.should eq("Int")
+    end
+
+
+  end
+
+end
+
+context "edge case type checking" do
+
+  it "rejects empty literal collections without type context" do
+    expect_type_error <<-DOIS
+      let x = [];
+    DOIS
+    expect_type_error <<-DOIS
+      let x = {};
+    DOIS
+  end
+
+  it "accepts empty literal ccollections with type context" do
+    check <<-DOIS
+      let x : Array(Int) = [];
+      let y : Map(String, Char) = {};
+    DOIS
+  end
+
+  it "rejects empty array without type context" do
+    expect_type_error <<-DOIS
+      let x = [];
+    DOIS
+  end
+
+  it "rejects empty map without type context" do
+    expect_type_error <<-DOIS
+      let x = {};
+    DOIS
+  end
+
+  it "infers empty array with type annotation" do
+    ast = check <<-DOIS
+      let x : Array(Int) = [];
+    DOIS
+    binding = unwrap_main(ast).statements.first.as(AST::Binding)
+    binding.resolved_type.to_s.should eq("Array(Int)")
+  end
+
+  it "infers empty map with type annotation" do
+    ast = check <<-DOIS
+      let x : Map(String, Int) = {};
+    DOIS
+    binding = unwrap_main(ast).statements.first.as(AST::Binding)
+    binding.resolved_type.to_s.should eq("Map(String, Int)")
+  end
+
+  it "rejects nested generic mismatch in structs" do
+    expect_type_error <<-DOIS
+      type Box<T> has value : T end
+      let x : Box(Box(Int)) = Box(value = Box(value = "oops"));
+    DOIS
+  end
+
+  it "rejects using generic type without arguments" do
+    expect_type_error <<-DOIS
+      type Box<T> has value : T end
+      let x : Box = Box(value = 5);
+    DOIS
+  end
+
+  it "rejects pattern matching with wrong types" do
+    expect_type_error <<-DOIS
+      type Some<T> has value : T end
+      match Some(value = 5) then
+        Some(value = v) => v + "oops"
+      end;
+    DOIS
+  end
+
+  it "requires exhaustiveness for union types in match" do
+    expect_type_error <<-DOIS
+      type Some<T> has value : T end
+      type Maybe<T> is Some(T) | Nil end
+      match Some(value = 5) then
+        Some(value = v) => v
+      end;
+    DOIS
+  end
+
+  it "infers types for nested expressions" do
+    ast = check <<-DOIS
+      type Some<T> has value : T end
+      let x = Some(value = Some(value = 5));
+    DOIS
+    binding = unwrap_main(ast).statements.first.as(AST::Binding)
+    type = binding.resolved_type.as(T::NominalType)
+    type.definition.name.should eq("Some")
+    inner_type = type.type_args.first.as(T::NominalType)
+    inner_type.definition.name.should eq("Some")
+    inner_inner_type = inner_type.type_args.first.as(T::NominalType)
+    inner_inner_type.definition.name.should eq("Int")
+  end
+
+  it "rejects ignoring proc result if configured strict" do
+    expect_type_error <<-DOIS
+      fn do_thing $ () : Int =>
+        5
+      end
+      do_thing$();
+    DOIS
+  end
+
 end
