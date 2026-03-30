@@ -25,6 +25,9 @@ module DoisC
         when Atomic::CHAR; "Char"
         when Atomic::STRING; "String"
         when Atomic::BOOL; "Bool"
+        when Atomic::ARRAY; "Array"
+        when Atomic::TUPLE; "Tuple"
+        when Atomic::MAP; "Map"
         else raise Exception.new
         end
       end
@@ -32,7 +35,7 @@ module DoisC
 
     # Enumerates all atomic types recognized by the type system.
     enum Atomic
-      INT; FLOAT; NIL; CHAR; STRING; BOOL
+      INT; FLOAT; NIL; CHAR; STRING; BOOL; ARRAY; TUPLE; MAP
     end
 
     # A constructor for a instantiating a type, i.e. `let x = MyType()`
