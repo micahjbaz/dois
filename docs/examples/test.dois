@@ -1,0 +1,4 @@
+fn foo$ : Int =>
+  5 
+end
+

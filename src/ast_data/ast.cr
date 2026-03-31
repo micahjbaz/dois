@@ -48,6 +48,16 @@ module DoisC
       end
     end
 
+    # Represents a field or property access, i.e. `object.field`
+    class AccessExpression < Expression
+      getter object : Expression
+      getter field : Identifier
+
+      def initialize(@object : Expression, @field : Identifier, source_location : SourceLocation)
+        super(source_location)
+      end
+    end
+
     # A single operator expression
     class UnaryExpression < Expression
       getter operator : TokenType
@@ -106,11 +116,12 @@ module DoisC
 
     # Base class for procedure and function calls to inherit from
     # Arguments may be positional (Expression) or named (NamedArgument)
+    # Callee can be any Expression (not just Identifier), enabling chaining like a.b().c()
     abstract class Call < Expression
-      getter callee : Identifier
+      getter callee : Expression  # can now be IdentifierExpression or AccessExpression, etc.
       getter arguments : Array(Expression) # may include NamedArgument
 
-      def initialize(@callee : Identifier, @arguments : Array(Expression), source_location : SourceLocation)
+      def initialize(@callee : Expression, @arguments : Array(Expression), source_location : SourceLocation)
         super(source_location)
       end
     end
