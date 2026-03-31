@@ -12,15 +12,19 @@ module DoisC
         left = parse_prefix
 
         until eof?
+          # Chained field / property access
+          if match?(TokenType::PERIOD)
+            field = parse_variable_identifier
+            left = AccessExpression.new(left, field, field.source_location)
+            next
+          end
           # Procedure call
           if peek.type == TokenType::L_PAREN
-            var_id = left.as(IdentifierExpression).identifier
-            left = parse_procedure_call(var_id, var_id.source_location)
+            left = parse_procedure_call(left, left.source_location)
           end
           # Function call
           if match?(TokenType::FN_APPLY)
-            var_id = left.as(IdentifierExpression).identifier
-            left = parse_function_call(var_id, var_id.source_location)
+            left = parse_function_call(left, left.source_location)
           end
 
           break unless binary_operator?(peek) || assign_operator?(peek)
@@ -85,12 +89,14 @@ module DoisC
 
       private def parse_identifier_expression : Expression
         variable = parse_variable_identifier
+        identifier_expr = IdentifierExpression.new(variable, variable.source_location)
+
         if peek.type == TokenType::L_PAREN
-          return parse_procedure_call(variable, variable.source_location)
+          return parse_procedure_call(identifier_expr, variable.source_location)
         elsif match?(TokenType::FN_APPLY)
-          return parse_function_call(variable, variable.source_location) 
+          return parse_function_call(identifier_expr, variable.source_location)
         else
-          return IdentifierExpression.new(variable, variable.source_location)
+          return identifier_expr
         end
       end
       
@@ -100,12 +106,12 @@ module DoisC
         return TokenType::EOF # fallback so we have some tokentype to return, should never happen
       end
       
-      private def parse_procedure_call(callee : Identifier, location : SourceLocation) : ProcedureCall
+      private def parse_procedure_call(callee : Expression, location : SourceLocation) : ProcedureCall
         arguments = parse_arguments
         return ProcedureCall.new(callee, arguments, location)
       end
 
-      private def parse_function_call(callee : Identifier, location : SourceLocation) : FunctionCall
+      private def parse_function_call(callee : Expression, location : SourceLocation) : FunctionCall
         arguments = parse_arguments
         return FunctionCall.new(callee, arguments, location)
       end

@@ -196,7 +196,7 @@ module DoisC
         # Set expected return type in context
         @ctx.with_return_type(engine.parse_type_identifier(func.return_type_id, func.generics)) do
           expected = engine.parse_type_identifier(func.return_type_id, func.generics)
-          verify_expression(func.body, expected)
+          func.resolved_type = verify_expression(func.body, expected)
         end
 
         @ctx.exit_scope
@@ -210,7 +210,7 @@ module DoisC
         end
 
         @ctx.enter_scope
-        proc.params.each do |param|
+        proc.params.each do |param| 
           type = engine.parse_type_identifier(param.type_id, proc.generics)
           @ctx.declare(param.name, type)
         end
@@ -444,20 +444,25 @@ module DoisC
       
 
       private def verify_call(call_expr : Call) : Types::Type
-        callee_name = call_expr.callee.name
-        type_ref = global.type_reference(callee_name).as?(Types::NominalTypeReference)
-        type_def = type_ref && global.type_definition(type_ref)
+        callee_expr = call_expr.callee
 
-        if type_def.is_a?(Types::ProductTypeDefinition)
-          return verify_constructor_call(call_expr, type_def)
-        else
-          return verify_function_call(call_expr)
+        if callee_expr.is_a?(IdentifierExpression)
+          callee_name = callee_expr.identifier.name
+          type_ref = global.type_reference(callee_name).as?(Types::NominalTypeReference)
+          type_def = type_ref && global.type_definition(type_ref)
+
+          if type_def.is_a?(Types::ProductTypeDefinition)
+            return verify_constructor_call(call_expr, type_def)
+          end
         end
+
+        verify_function_call(call_expr)
       end
 
       # Handles product type constructor calls like Some(value = 3)
       private def verify_constructor_call(call_expr : Call, type_def : Types::ProductTypeDefinition) : Types::Type
-        callee_name = call_expr.callee.name
+        callee_expr = call_expr.callee.as(IdentifierExpression)
+        callee_name = callee_expr.identifier.name
 
         # Remove: bindings = {} of String => Types::Type
         # Instead, use a fresh generic_scope with type variables for generics
@@ -537,7 +542,7 @@ module DoisC
       # Handles normal function calls
       private def verify_function_call(call_expr : Call) : Types::Type
         # Resolve callee type
-        callee_type = verify_identifier(call_expr.callee)
+        callee_type = verify_expression(call_expr.callee)
 
         # Enter a fresh generic scope for this call
         callee_type = engine.instantiate(callee_type)
