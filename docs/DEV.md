@@ -1,17 +1,5 @@
 # Developer Notes
 
-## Type System
-
-- Hindley–Milner style inference
-- `TypeVariable.instance` is used for unification
-- `prune` must always be called before comparisons
-
-### Generics
-
-- `instantiate` replaces GenericTypeParameter → fresh TypeVariable
-- nominal types create fresh args if generics exist
-- do not copy types before unify (causes lost bindings)
-
 ### Known Issues
 
 - Verifier does not fully handle generic scope in match patterns
@@ -23,4 +11,11 @@
 - Fix verifier generic scope
 - add function arity checks
 - implement match exhaustiveness
-- Start transpilation to C!
+
+## Next Steps
+
+- Proper AST split: declarations vs executable body
+- Expanded expression codegen
+- Improved type system handling
+- Optional native compilation step
+- Module system (lexer, parser, type check, etc.)
