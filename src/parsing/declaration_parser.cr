@@ -9,9 +9,30 @@ module DoisC
         token = consume(TokenType::MODULE, "expected `module` to begin module declaration")
         name = consume(TokenType::IDENTIFIER, "expected module name identifier").lexeme
         consume(TokenType::HAS, "expected `has` after module name")
-        procedure = parse_procedure(TokenType::END)
-        consume(TokenType::END, "expected `end` to end module declaration")
-        return ModuleDeclaration.new(name, procedure, location(token))
+        statements = [] of Statement
+        until match?(TokenType::END)
+          statement = parse_statement
+          statements << statement if statement
+        end
+        return ModuleDeclaration.new(name, statements, location(token))
+      end
+
+      def parse_type_identifier(location : SourceLocation) : TypeID
+        inner_types = [] of TypeID
+        name = if t = match?(TokenType::IDENTIFIER); t.lexeme else "Tuple" end
+
+        if match?(TokenType::L_PAREN)
+          inner_types << parse_type_identifier(location)
+          while match?(TokenType::COMMA)
+            inner_types << parse_type_identifier(location)
+          end
+          consume(TokenType::R_PAREN, "expected ')' to end type args")
+        end
+        if match?(TokenType::QUESTION)
+          inner_types = [TypeID.new(name, inner_types, location)]
+          name = "Maybe"
+        end
+        return TypeID.new(name, inner_types, location)
       end
 
       private def parse_binding : Statement 

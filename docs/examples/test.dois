@@ -1,4 +1,7 @@
-fn foo$ : Int =>
-  5 
+module MyModule has
+  fn foo$() : Int=>
+    5
+  end
 end
 
+  

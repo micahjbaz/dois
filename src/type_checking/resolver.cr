@@ -19,7 +19,7 @@ module DoisC
       # Entry point — traverses the AST and resolves all type declarations
       # This includes products, unions, functions, and procedures
       def resolve_all(ast : AST)
-        ast.procedure.statements.each do |stmt|
+        ast.module_decl.body.each do |stmt|
           case stmt
           when ProductTypeDeclaration
             resolve_product(stmt)

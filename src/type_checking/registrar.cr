@@ -20,7 +20,7 @@ module DoisC
       # Adds type stubs to the global environment to ensure that type references
       # can be resolved later, even if the full definition is not yet populated.
       def register_all(ast : AST)
-        ast.procedure.statements.each do |stmt|
+        ast.module_decl.body.each do |stmt|
           case stmt
           when TypeDeclaration
             register_type(stmt)

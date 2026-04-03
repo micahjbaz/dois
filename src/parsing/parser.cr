@@ -26,51 +26,7 @@ module DoisC
       end
 
       def parse : ASTData::AST
-        ASTData::AST.new(parse_procedure(TokenType::EOF))
-      end
-
-      private def parse_variable_identifier : Identifier 
-        token = consume(TokenType::IDENTIFIER, "expected identifier")
-        first_name = token.lexeme
-        module_names = [] of String
-        accessor_names = [] of String
-        name = first_name
-
-        if peek.type == TokenType::DOUBLE_COLON # if we have module names to parse...
-          module_names << first_name
-          while match?(TokenType::DOUBLE_COLON)
-            next_name = consume(TokenType::IDENTIFIER, "expect identifier").lexeme
-            if peek.type == TokenType::DOUBLE_COLON
-              module_names << next_name
-            else
-              name = next_name # last id after :: is the identifier name
-            end
-          end
-        end
-
-        while match?(TokenType::PERIOD)
-          accessor_names << consume(TokenType::IDENTIFIER, "expect identifier for accessor name").lexeme
-        end
-
-        return Identifier.new(name, module_names, accessor_names, location(token))
-      end
-
-      def parse_type_identifier(location : SourceLocation) : TypeID
-        inner_types = [] of TypeID
-        name = if t = match?(TokenType::IDENTIFIER); t.lexeme else "Tuple" end
-
-        if match?(TokenType::L_PAREN)
-          inner_types << parse_type_identifier(location)
-          while match?(TokenType::COMMA)
-            inner_types << parse_type_identifier(location)
-          end
-          consume(TokenType::R_PAREN, "expected ')' to end type args")
-        end
-        if match?(TokenType::QUESTION)
-          inner_types = [TypeID.new(name, inner_types, location)]
-          name = "Maybe"
-        end
-        return TypeID.new(name, inner_types, location)
+        ASTData::AST.new(parse_module_declaration)
       end
 
       private def match?(type : TokenType) : Token?
