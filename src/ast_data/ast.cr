@@ -13,8 +13,8 @@ module DoisC
     # Container for abstract syntax tree (AST) nodes,
     # comprised of a single `Procedure`
     class AST
-      getter procedure : Procedure
-      def initialize(@procedure : Procedure)
+      getter module_decl : ModuleDeclaration
+      def initialize(@module_decl : ModuleDeclaration)
       end
     end
 
@@ -201,9 +201,9 @@ module DoisC
     # Declaration of a module, i.e. `module MyModule has...`
     class ModuleDeclaration < Declaration
       getter name : String
-      getter procedure : Procedure
+      getter body : Array(Statement)
 
-      def initialize(@name : String, @procedure : Procedure, source_location : SourceLocation)
+      def initialize(@name : String, @body : Array(Statement), source_location : SourceLocation)
         super(source_location)
       end
     end

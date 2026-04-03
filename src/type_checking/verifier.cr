@@ -34,7 +34,7 @@ module DoisC
       # Entry point for verifying an entire AST.
       # Iterates over all statements in the top-level procedure and verifies each.
       def verify_all(ast : AST)
-        ast.procedure.statements.each do |stmt|
+        ast.module_decl.body.each do |stmt|
           verify_statement(stmt)
         end
       end

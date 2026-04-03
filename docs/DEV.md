@@ -19,3 +19,7 @@
 - Improved type system handling
 - Optional native compilation step
 - Module system (lexer, parser, type check, etc.)
+- Refactor syntax:
+  - no `=>` for function decl
+  - no `$` for function decl
+  - no `has` for module decl
