@@ -29,14 +29,48 @@ module DoisC
       def transpile(ast : ASTData::AST) : String
         @io.clear
         emit_c_include_runtime
+        emit_c_declarations(ast)
         emit_c_dois_main(ast)
         emit_c_main
         @io.to_s
       end
 
+
+      private def emit_c_declarations(ast : ASTData::AST)
+        ast.module_decl.body.each do |stmt|
+          # Special case: skip 'proc main', will be emitted in dois_main
+          if stmt.is_a?(ASTData::ProcedureDeclaration) && stmt.name == "main"
+            next
+          end
+
+          next unless stmt.is_a?(ASTData::Declaration)
+          @declaration_codegen.emit(stmt)
+          @io.puts
+        end
+      end
+
       private def emit_c_dois_main(ast : ASTData::AST)
         @io.puts "void dois_main(void) {"
-        @declaration_codegen.emit_all(ast)
+
+        main_proc = ast.module_decl.body.find do |stmt|
+          stmt.is_a?(ASTData::ProcedureDeclaration) && stmt.name == "main"
+        end
+
+        unless main_proc.is_a?(ASTData::ProcedureDeclaration)
+          raise "Error: module '#{ast.module_decl.name}' does not define a 'proc main'"
+        end
+
+        main_proc.body.statements.each do |main_stmt|
+          @function_codegen.emit_statement(main_stmt)
+        end
+
+        # Optionally, emit other top-level executable statements
+        ast.module_decl.body.each do |stmt|
+          next if stmt.is_a?(ASTData::Declaration) || (stmt.is_a?(ASTData::ProcedureDeclaration) && stmt.name == "main")
+
+          # executable top-level statement lowering goes here
+        end
+
         @io.puts "}"
         @io.puts
       end
