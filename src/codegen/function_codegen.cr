@@ -29,7 +29,23 @@ module DoisC
       end
 
       def emit_statements(stmts : Array(ASTData::Statement))
+        stmts.each do |stmt|
+          emit_statement(stmt)
+        end
+      end
 
+      def emit_statement(stmt : ASTData::Statement)
+        case stmt
+        when ASTData::Binding
+          type = @type_codegen.c_type(stmt.resolved_type.not_nil!)
+          expr = @expression_codegen.emit(stmt.value)
+          @io.puts "  #{type} #{stmt.name} = #{expr};"
+        when ASTData::ExpressionStatement
+          expr = @expression_codegen.emit(stmt.expression)
+          @io.puts "  #{expr};"
+        else
+          @io.puts "  /* unsupported statement: #{stmt.class} */"
+        end
       end
     end
   end

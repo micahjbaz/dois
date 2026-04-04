@@ -1,6 +1,11 @@
 module MyModule has
+  type Result is Nil end
   fn foo$() : Int=>
     5
+  end
+
+  proc main() do
+    let x : Float = 12.;
   end
 end
 
