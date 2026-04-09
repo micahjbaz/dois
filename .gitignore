@@ -2,6 +2,7 @@
 /bin/
 /.shards/
 *.dwarf
-stats
 .vscode/
 out.c
+node_modules/
+.DS_Store
