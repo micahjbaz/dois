@@ -5,9 +5,9 @@ require "../types/*"
 
 module DoisC
   module Codegen
-    class ExpressionCodegen
+    class ExpressionCodegen < BaseCodegen
 
-      def initialize(@io : IO::Memory)
+      def initialize(@emitter : Emitter)
       end
 
       def emit(expr : ASTData::Expression)
@@ -21,7 +21,7 @@ module DoisC
         when ASTData::StringLiteral
           emit_string_literal(expr)
         when ASTData::Identifier
-          @io << sanitize_name(expr.name)
+          emitter << sanitize_name(expr.name)
         when ASTData::BinaryExpression
           emit_binary(expr)
         else
@@ -32,12 +32,12 @@ module DoisC
       private def emit_binary(expr : ASTData::BinaryExpression)
         left = emit(expr.left)
         right = emit(expr.right)
-        @io << "(#{left} #{expr.operator} #{right})"
+        emitter << "(#{left} #{expr.operator} #{right})"
       end
 
       private def emit_string_literal(expr : ASTData::StringLiteral)
         escaped = expr.value.gsub("\\", "\\\\").gsub("\"", "\\\"")
-        @io << "\"#{escaped}\""
+        emitter << "\"#{escaped}\""
       end
 
       private def sanitize_name(name : String) : String
