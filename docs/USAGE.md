@@ -9,10 +9,12 @@
 Current pipeline:
 
 
-`.dois` source file
--> parse
--> type check
--> generate C (out.c)
+```
+.dois source file
+  → parse
+  → type check
+  → generate C (out.c)
+```
 
 
 The generated C depends on a small runtime located in `src/codegen/runtime/`.
@@ -24,7 +26,7 @@ The generated C depends on a small runtime located in `src/codegen/runtime/`.
 From the project root:
 
 ```bash
-shards build
+make
 ```
 
 This produces:
@@ -37,13 +39,19 @@ This produces:
 
 ## Running the Compiler
 
-### Dev mode (via shards)
+### Using Make (recommended)
 
 ```bash
-shards run doisc -- path/to/file.dois
+make run FILE=path/to/file.dois
 ```
 
-### Using the compiled binary
+### Quick test (default example)
+
+```bash
+make test
+```
+
+### Using the compiled binary directly
 
 ```bash
 ./bin/doisc path/to/file.dois
@@ -132,7 +140,7 @@ src/codegen/runtime/runtime.c
 Typical loop:
 
 ```bash
-shards run doisc -- file.dois
+make test
 cat out.c
 cc out.c src/codegen/runtime/runtime.c -o out
 ./out
