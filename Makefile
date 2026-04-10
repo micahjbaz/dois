@@ -16,7 +16,7 @@ run: build
 
 # Run default test file, likely to be removed later on
 test: build
-	./bin/doisc ./docs/examples/test.dois
+	./bin/doisc ./examples/test.dois
 
 # Clean build artifacts (optional)
 clean:
