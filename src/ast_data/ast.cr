@@ -1,5 +1,6 @@
 require "./token"
-require "./metadata"
+require "./source_location"
+require "./symbol_ref"
 require "../types/type"
 
 module DoisC
@@ -196,6 +197,11 @@ module DoisC
     # Base class for declaration of a module, identifier, function, etc.
     abstract class Declaration < Statement
       abstract def name : String
+      property symbol_ref : SymbolRef?
+
+      def qualified_name : String
+        symbol_ref ? symbol_ref.not_nil!.mangled_name : name
+      end
     end
 
     # Declaration of a module, i.e. `module MyModule has...`
@@ -213,7 +219,7 @@ module DoisC
       getter name : String
       getter value : Expression
       getter type_id : TypeID?
-      
+
       property resolved_type : Types::Type?
 
       def initialize(@name : String, @value : Expression, @type_id : TypeID?, source_location : SourceLocation)
@@ -239,6 +245,8 @@ module DoisC
     class Parameter < Node
       getter name : String
       getter type_id : TypeID
+
+      property resolved_scope : Array(String)?
 
       property resolved_type : Types::Type?
 
@@ -319,6 +327,7 @@ module DoisC
       getter name : String
       getter module_names : Array(String)
       getter accessor_names : Array(String)
+      property symbol_ref : SymbolRef?
 
       def initialize(@name : String, @module_names : Array(String), @accessor_names : Array(String), source_location : SourceLocation)
         super(source_location)
