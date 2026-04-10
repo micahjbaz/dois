@@ -19,6 +19,9 @@ module DoisC
       # ===== Function Context =====
       @current_return_type : Types::Type?
 
+      # ===== Module Scope =====
+      @module_scope : Array(String)
+
       # ===== Loop Depth (for break checking) =====
       @loop_depth : Int32
 
@@ -26,6 +29,7 @@ module DoisC
         @scopes = [{} of String => Types::Type]
         @generic_scopes = [{} of String => Types::GenericTypeParameter]
         @current_return_type = nil
+        @module_scope = [] of String
         @loop_depth = 0
       end
 
@@ -77,6 +81,22 @@ module DoisC
 
       def current_generic_scope : Hash(String, Types::GenericTypeParameter)
         @generic_scopes.last || {} of String => Types::GenericTypeParameter
+      end
+
+      # ============================
+      # Module Scope
+      # ============================
+
+      def push_module(name : String)
+        @module_scope << name
+      end
+
+      def pop_module
+        @module_scope.pop
+      end
+
+      def current_module_scope : Array(String)
+        @module_scope.dup
       end
 
       # ============================
