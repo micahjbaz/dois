@@ -46,6 +46,8 @@ module DoisC
           verify_binding(stmt)
         when Reassignment
           verify_reassignment(stmt)
+        when VarDeclaration
+          verify_var_declaration(stmt)
         when ExpressionStatement
           verify_expression(stmt.expression)
         when FunctionDeclaration
@@ -181,6 +183,7 @@ module DoisC
       end
 
       private def verify_function(func : FunctionDeclaration)
+        func.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, func.name)
         @ctx.enter_generic_scope
         func.generics.each do |gen_name|
           @ctx.bind_generic(gen_name, Types::GenericTypeParameter.new(gen_name))
@@ -204,6 +207,7 @@ module DoisC
       end
 
       private def verify_procedure(proc : ProcedureDeclaration)
+        proc.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, proc.name)
         @ctx.enter_generic_scope
         proc.generics.each do |gen_name|
           @ctx.bind_generic(gen_name, Types::GenericTypeParameter.new(gen_name))
@@ -230,10 +234,41 @@ module DoisC
         @ctx.exit_generic_scope
       end
       
+      private def verify_var_declaration(decl : VarDeclaration)
+        decl.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, decl.name)
 
+        value_type =
+          if value = decl.value
+            verify_expression(value)
+          elsif type_id = decl.type_id
+            engine.parse_type_identifier(type_id)
+          else
+            raise error("Variable declaration '#{decl.name}' must have either a type annotation or an initializer", decl.source_location)
+          end
+
+        if type_id = decl.type_id
+          annotated_type = engine.parse_type_identifier(type_id)
+
+          if value = decl.value
+            unless engine.is_assignable?(value_type, annotated_type)
+              raise error(
+                "Type mismatch in variable declaration '#{decl.name}': expected #{annotated_type}, got #{value_type}",
+                value.source_location
+              )
+            end
+          end
+
+          decl.resolved_type = annotated_type
+          @ctx.declare(decl.name, annotated_type)
+        else
+          decl.resolved_type = value_type
+          @ctx.declare(decl.name, value_type)
+        end
+      end
 
 
       private def verify_binding(binding : Binding)
+        binding.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, binding.name)
         name = binding.name
         value_type =
           if id = binding.type_id
@@ -350,6 +385,7 @@ module DoisC
       end
 
       private def verify_identifier(id : Identifier) : Types::Type
+        id.symbol_ref = ASTData::SymbolRef.new(@ctx.current_module_scope, id.name)
         # First, look in local scope
         type = @ctx.lookup(id.name)
         # Instantiate polymorphic types when they are used
@@ -767,6 +803,7 @@ module DoisC
 
       # Verifies a ProductTypeDeclaration: checks field types and registers the type in the current context.
       private def verify_product_type_declaration(decl : ASTData::ProductTypeDeclaration)
+        decl.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, decl.name)
         # Parse and verify all field types
         field_types = {} of String => Types::NominalTypeReference
         decl.fields.each do |field|
@@ -785,6 +822,7 @@ module DoisC
               Types::NominalTypeReference.new(type.to_s)
             end
           field_types[field.name] = ref
+          field.resolved_type = type
         end
 
         # TODO decide if this was a bug
@@ -848,6 +886,7 @@ module DoisC
       # Verifies a UnionTypeDeclaration: checks generics and variants against the global environment,
       # handling generics and generic product variants (e.g., Some(T)).
       private def verify_union_type_declaration(decl : ASTData::UnionTypeDeclaration)
+        decl.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, decl.name)
         # Lookup the union type in the global environment.
         global_def = global.type_definition(Types::NominalTypeReference.new(decl.name))
         unless global_def && global_def.is_a?(Types::UnionTypeDefinition)
@@ -883,6 +922,10 @@ module DoisC
             raise error("Union type '#{decl.name}' has variant '#{variant_type_id.name}' which is not defined in the global environment", variant_type_id.source_location)
           end
         end
+      end
+
+      private def current_symbol(name : String)
+        ASTData::SymbolRef.new(@ctx.current_module_scope, name)
       end
 
     end
