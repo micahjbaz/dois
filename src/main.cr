@@ -2,56 +2,86 @@ require "./compilation_error"
 require "./ast_data/ast"
 require "./parsing/parser"
 require "./type_checking/checker"
-require "colorize"
 require "./codegen/transpiler"
+require "colorize"
 
+module DoisC
+  class CLI
+    def initialize(@args : Array(String))
+    end
 
-source_path = nil
+    def run
+      source_path = parse_args
+      source = read_source(source_path)
+      begin
+        ast = parse(source, source_path)
+        type_check(ast, source_path)
+        generate_c(ast, source_path)
+      rescue ex : DoisC::Parsing::ParseError
+        handle_parse_error(source_path, ex)
+      rescue ex : DoisC::TypeChecking::TypeError
+        handle_type_error(source_path, ex)
+      end
+    end
 
-args = ARGV.dup
-idx = 0
-while idx < args.size
-  source_path ||= args[idx]
-  idx += 1
+    private def parse_args : String
+      if @args.empty?
+        puts "Usage: doisc <source_file>"
+        exit(1)
+      end
+
+      @args.first.strip
+    end
+
+    private def read_source(path : String) : String
+      File.read(path)
+    end
+
+    private def parse(source : String, path : String)
+      log("Parsing #{path}...")
+      ast = DoisC::Parsing::Parser.new(source).parse
+      success("Parsed successfully!")
+      puts
+      ast
+    end
+
+    private def type_check(ast, path : String)
+      log("Type checking #{path}...")
+      DoisC::TypeChecking::TypeChecker.new.check(ast)
+      success("Type checked successfully!")
+      puts
+    end
+
+    private def generate_c(ast, path : String)
+      log("Generating C #{path}...")
+
+      transpiler = DoisC::Codegen::Transpiler.new(IO::Memory.new)
+      generated_c = transpiler.transpile(ast)
+
+      output_path = "./out.c"
+      File.write(output_path, generated_c)
+
+      success("Generated C successfully -> #{output_path}")
+    end
+
+    private def log(msg : String)
+      puts msg.colorize(100, 100, 100)
+    end
+
+    private def success(msg : String)
+      puts msg.colorize(100, 200, 100)
+    end
+
+    private def handle_parse_error(path : String, ex)
+      puts "#{path}:#{ex.message}".colorize(220, 120, 120)
+      ex.put_backtrace
+    end
+
+    private def handle_type_error(path : String, ex)
+      puts "#{path}:#{ex}".colorize(220, 120, 120)
+      ex.put_backtrace
+    end
+  end
 end
 
-if source_path.nil? || source_path.strip.empty?
-  puts "Usage: doisc <source_file>"
-  exit(1)
-end
-
-source_path = source_path.strip
-source = File.read(source_path)
-c_output_path = "./out.c"
-
-
-
-
-begin
-  parser = DoisC::Parsing::Parser.new(source)
-
-  puts "Parsing #{source_path}...".colorize(100, 100, 100)
-  ast = parser.parse
-  puts "Parsed successfully!".colorize(100, 200, 100)
-
-  puts
-
-  puts "Type checking #{source_path}...".colorize(100, 100, 100)
-  DoisC::TypeChecking::TypeChecker.new.check(ast)
-  puts "Type checked successfully!".colorize(100, 200, 100)
-
-  puts
-
-  puts "Generating C #{source_path}...".colorize(100, 100, 100)
-  generated_c = DoisC::Codegen::Transpiler.new.transpile(ast)
-  File.write(c_output_path, generated_c)
-  puts "Generated C successfully -> #{c_output_path}".colorize(100, 200, 100)
-
-
-rescue parse_error : DoisC::Parsing::ParseError
-  puts "#{source_path}:#{parse_error.message}".colorize(220, 150, 150)
-  parse_error.put_backtrace
-rescue type_error : DoisC::TypeChecking::TypeError
-  puts "#{source_path}:#{type_error.to_s}".colorize(220, 150, 150)
-  type_error.put_backtrace
-end
+DoisC::CLI.new(ARGV).run
