@@ -2,8 +2,8 @@
 
 module DoisC
   module Codegen
-    class FunctionCodegen
-      def initialize(@type_codegen : TypeCodegen, @expression_codegen : ExpressionCodegen, @io : IO::Memory)
+    class FunctionCodegen < BaseCodegen
+      def initialize(@type_codegen : TypeCodegen, @expression_codegen : ExpressionCodegen, @emitter : Emitter)
       end
 
       def emit_function(fn : ASTData::FunctionDeclaration)
@@ -12,9 +12,9 @@ module DoisC
           "#{@type_codegen.c_type(param.resolved_type.not_nil!)} #{param.name}"
         end.join(", ")
 
-        @io.puts "#{return_type} #{fn.name}(#{params}) {"
-        @io.puts "return #{@expression_codegen.emit(fn.body)};"
-        @io.puts "}"
+        emitter.puts "#{return_type} #{fn.name}(#{params}) {"
+        emitter.puts "return #{@expression_codegen.emit(fn.body)};"
+        emitter.puts "}"
       end
 
       def emit_procedure(pc : ASTData::ProcedureDeclaration)
@@ -23,9 +23,9 @@ module DoisC
           "#{@type_codegen.c_type(param.resolved_type.not_nil!)} #{param.name}"
         end.join(", ")
 
-        @io.puts "#{return_type} #{pc.name}(#{params}) {"
+        emitter.puts "#{return_type} #{pc.name}(#{params}) {"
         emit_statements(pc.body.statements)
-        @io.puts "}"
+        emitter.puts "}"
       end
 
       def emit_statements(stmts : Array(ASTData::Statement))
@@ -39,12 +39,12 @@ module DoisC
         when ASTData::Binding
           type = @type_codegen.c_type(stmt.resolved_type.not_nil!)
           expr = @expression_codegen.emit(stmt.value)
-          @io.puts "  #{type} #{stmt.name} = #{expr};"
+          emitter.puts "#{type} #{stmt.name} = #{expr};"
         when ASTData::ExpressionStatement
           expr = @expression_codegen.emit(stmt.expression)
-          @io.puts "  #{expr};"
+          emitter.puts "#{expr};"
         else
-          @io.puts "  /* unsupported statement: #{stmt.class} */"
+          emitter.puts "/* unsupported statement: #{stmt.class} */"
         end
       end
     end

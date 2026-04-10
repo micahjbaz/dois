@@ -2,9 +2,9 @@
 
 module DoisC
   module Codegen
-    class TypeCodegen
+    class TypeCodegen < BaseCodegen
 
-      def initialize(@io : IO::Memory)
+      def initialize(@emitter : Emitter)
       end
 
       # Maps a resolved Dois type into a concrete C type spelling.
@@ -32,29 +32,36 @@ module DoisC
       def emit_product(decl : ASTData::ProductTypeDeclaration)
         name = sanitize_name(decl.name)
 
-        @io.puts "struct #{name} {"
-        decl.fields.each do |field|
-          field_type = field.resolved_type.nil? ? c_type(field.resolved_type.not_nil!) : "void*"
-          @io.puts "  #{field_type} #{field.name};"
+        writeln "struct #{name} {"
+        with_indent do
+          decl.fields.each do |field|
+            field_type = !field.resolved_type.nil? ? c_type(field.resolved_type.not_nil!) : "void*"
+            
+            writeln "#{field_type} #{field.name};"
+          end
         end
-        @io.puts "};"
-        @io.puts
+        writeln "};"
+        newline
       end
 
       def emit_union(decl : ASTData::UnionTypeDeclaration)
         name = sanitize_name(decl.name)
 
-        @io.puts "struct #{name} {"
-        @io.puts "  int tag;"
-        @io.puts "  union {"
-        decl.variants.each_with_index do |variant, index|
-          variant_name = sanitize_name(variant.name)
-          payload_type = "int"
-          @io.puts "    #{payload_type} #{variant_name}; // tag #{index}"
+        writeln "struct #{name} {"
+        with_indent do
+          writeln "int tag;"
+          writeln "union {"
+          with_indent do
+            decl.variants.each_with_index do |variant, index|
+              variant_name = sanitize_name(variant.name)
+              payload_type = "int"
+              writeln "#{payload_type} #{variant_name}; // tag #{index}"
+            end
+          end
+          writeln "} as;"
         end
-        @io.puts "  } as;"
-        @io.puts "};"
-        @io.puts
+        writeln "};"
+        newline
       end
 
       private def sanitize_name(name : String) : String

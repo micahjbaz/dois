@@ -1,14 +1,10 @@
 module DoisC
   module Codegen
-    class DeclarationCodegen
+    class DeclarationCodegen < BaseCodegen
       # Define a union type for top-level declarations in AST
       alias TopLevelDecl = ASTData::ProductTypeDeclaration | ASTData::UnionTypeDeclaration | ASTData::FunctionDeclaration
 
-      def initialize(
-        @type_codegen : TypeCodegen,
-        @function_codegen : FunctionCodegen,
-        @io : IO::Memory
-      )
+      def initialize(@type_codegen : TypeCodegen, @function_codegen : FunctionCodegen, @emitter : Emitter)
       end
 
       # Dispatch to the appropriate codegen for the specific top-level declaration

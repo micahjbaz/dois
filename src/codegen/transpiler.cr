@@ -6,18 +6,14 @@ module DoisC
     #
     # This layer should NOT walk expressions itself anymore.
     # It should only orchestrate the specialized emitters.
-    class Transpiler
+    class Transpiler < BaseCodegen
 
-      def initialize
-        @io = IO::Memory.new
-        @type_codegen = TypeCodegen.new(@io)
-        @expression_codegen = ExpressionCodegen.new(@io)
-        @function_codegen = FunctionCodegen.new(@type_codegen, @expression_codegen, @io)
-        @declaration_codegen = DeclarationCodegen.new(
-          @type_codegen,
-          @function_codegen,
-          @io
-        )
+      def initialize(io : IO::Memory)
+        @emitter = Emitter.new(io)
+        @type_codegen = TypeCodegen.new(@emitter)
+        @expression_codegen = ExpressionCodegen.new(@emitter)
+        @function_codegen = FunctionCodegen.new(@type_codegen, @expression_codegen, @emitter)
+        @declaration_codegen = DeclarationCodegen.new(@type_codegen, @function_codegen, @emitter)
       end
 
       # Main compiler entry point.
@@ -27,66 +23,56 @@ module DoisC
       end
 
       def transpile(ast : ASTData::AST) : String
-        @io.clear
+        emitter.clear
         emit_c_include_runtime
         emit_c_declarations(ast)
-        emit_c_dois_main(ast)
         emit_c_main
-        @io.to_s
+        emitter.to_s
       end
 
 
       private def emit_c_declarations(ast : ASTData::AST)
+        found_main = false
         ast.module_decl.body.each do |stmt|
           # Special case: skip 'proc main', will be emitted in dois_main
           if stmt.is_a?(ASTData::ProcedureDeclaration) && stmt.name == "main"
-            next
+            emit_c_dois_main(stmt)
+            found_main = true
+          elsif stmt.is_a?(ASTData::Declaration)
+            @declaration_codegen.emit(stmt)
+            emitter.puts
           end
-
-          next unless stmt.is_a?(ASTData::Declaration)
-          @declaration_codegen.emit(stmt)
-          @io.puts
+        end
+        unless found_main
+          raise "Error: module '#{ast.module_decl.name}' does not define a 'proc main'"
         end
       end
 
-      private def emit_c_dois_main(ast : ASTData::AST)
-        @io.puts "void dois_main(void) {"
-
-        main_proc = ast.module_decl.body.find do |stmt|
-          stmt.is_a?(ASTData::ProcedureDeclaration) && stmt.name == "main"
-        end
-
-        unless main_proc.is_a?(ASTData::ProcedureDeclaration)
-          raise "Error: module '#{ast.module_decl.name}' does not define a 'proc main'"
-        end
+      private def emit_c_dois_main(main_proc : ASTData::ProcedureDeclaration)
+        emitter.puts "void dois_main(void) {"
 
         main_proc.body.statements.each do |main_stmt|
           @function_codegen.emit_statement(main_stmt)
         end
 
-        # Optionally, emit other top-level executable statements
-        ast.module_decl.body.each do |stmt|
-          next if stmt.is_a?(ASTData::Declaration) || (stmt.is_a?(ASTData::ProcedureDeclaration) && stmt.name == "main")
-
-          # executable top-level statement lowering goes here
-        end
-
-        @io.puts "}"
-        @io.puts
+        emitter.puts "}"
+        emitter.puts
       end
 
       private def emit_c_main
-        @io.puts "int main(void) {"
-        @io.puts "  dois_runtime_init();"
-        @io.puts "  dois_main();"
-        @io.puts "  dois_runtime_shutdown();"
-        @io.puts "  return 0;"
-        @io.puts "}"
+        emitter.puts "int main(void) {"
+        emitter.with_indent do 
+          emitter.puts "dois_runtime_init();"
+          emitter.puts "dois_main();"
+          emitter.puts "dois_runtime_shutdown();"
+          emitter.puts "return 0;"
+        end
+        emitter.puts "}"
       end
 
       private def emit_c_include_runtime
-        @io.puts "#include \"runtime/runtime.h\""
-        @io.puts
+        emitter.puts "#include \"runtime/runtime.h\""
+        emitter.puts
       end
     end
   end
