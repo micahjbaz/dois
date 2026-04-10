@@ -1,0 +1,19 @@
+module MyModule has
+  type Result is
+    Err | Nil
+  end
+
+  type Err has
+    message : Int
+  end
+
+  fn foo$() : Int =>
+    5
+  end
+
+  proc main() do
+    let x : Float = 12.;
+  end
+end
+
+  
