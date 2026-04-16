@@ -2,7 +2,7 @@
 
 ## Language Specification
 - [Overview](overview.md)
-- [Language Reference](language-spec/README.md)
+- [Language Reference](spec/README.md)
   - Lexical Structure
   - Statements
   - Expressions
@@ -13,6 +13,7 @@
   - Generics
   - Modules
   - Program Structure
+- [Usage](USAGE.md)
 
 ## Runtime
 - [Memory Model](runtime/memory-model.md)
