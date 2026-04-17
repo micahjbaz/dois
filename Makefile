@@ -12,12 +12,12 @@ run: build
 		exit 1; \
 	fi
 	./bin/doisc $(FILE)
-	cc out.c -o out
+	cc out.c -o out ./src/codegen/runtime/runtime.c
 
 # Run default test file, likely to be removed later on
 test: build
 	./bin/doisc ./examples/test.dois
-	cc out.c -o out
+	cc out.c -o out ./src/codegen/runtime/runtime.c
 
 # Clean build artifacts (optional)
 clean:
