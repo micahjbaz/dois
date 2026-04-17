@@ -74,13 +74,31 @@ module DoisC
           if operator.type == TokenType::EQ
             return Reassignment.new(var_id, right, var_id.source_location)
           else
-            binary_op_type = desugar_assign_operator(operator.type)
-            binary_expr = BinaryExpression.new(var_expr, binary_op_type, right, var_id.source_location)
+            operator.type = desugar_assign_operator(operator.type)
+            parsed_operator = parse_operator(operator)
+            binary_expr = BinaryExpression.new(var_expr, parsed_operator, right, var_id.source_location)
             return Reassignment.new(var_id, binary_expr, var_id.source_location)
           end
         else
-          return BinaryExpression.new(left, operator.type, right, left.source_location)
+          return BinaryExpression.new(left, parse_operator(operator), right, left.source_location)
         end
+      end
+
+      private def parse_operator(operator : Token) : Operator
+        operator_type = case operator.type
+        when TokenType::ADD
+          OperatorType::ADD
+        when TokenType::SUB
+          OperatorType::SUB
+        when TokenType::MUL
+          OperatorType::MULT
+        when TokenType::DIV
+          OperatorType::DIV
+        else
+          raise error("unsupported operator '#{operator.lexeme}'", operator)
+        end
+
+        Operator.new(operator_type)
       end
 
       private def parse_prefix : Expression
@@ -127,7 +145,9 @@ module DoisC
       end
       
       private def desugar_assign_operator(type : TokenType) : TokenType
+        pp type
         token_type = DESUGARED_ASSIGN_OPERATORS[type]?
+        pp token_type
         return token_type if token_type
         return TokenType::EOF # fallback so we have some tokentype to return, should never happen
       end
@@ -188,7 +208,7 @@ module DoisC
         precedence = EXPR_PRECEDENCE[operator.type]
         right = parse_expression(precedence)
 
-        return Binary.new(left, operator, right)
+        return BinaryExpression.new(left, parse_operator(operator), right, left.source_location)
       end
 
       private def precedence_of(type : TokenType) : Int32

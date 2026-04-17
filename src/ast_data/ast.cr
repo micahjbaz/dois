@@ -72,10 +72,10 @@ module DoisC
     # A two operator expression
     class BinaryExpression < Expression
       getter left : Expression
-      getter operator : TokenType
+      getter operator : Operator
       getter right : Expression
 
-      def initialize(@left : Expression, @operator : TokenType, @right : Expression, source_location : SourceLocation)
+      def initialize(@left : Expression, @operator : Operator, @right : Expression, source_location : SourceLocation)
         super(source_location)
       end
     end
@@ -499,6 +499,34 @@ module DoisC
       
       def literal_type : LiteralType
         LiteralType::Map
+      end
+    end
+
+    # ##############################################################################################
+
+    enum OperatorType
+      ADD; SUB; MULT; DIV;
+    end
+
+    class Operator
+      getter type : OperatorType
+
+      def initialize(@type : OperatorType)
+      end
+
+      def to_s
+        case type
+        when OperatorType::ADD
+          "+"
+        when OperatorType::SUB
+          "-"
+        when OperatorType::MULT
+          "*"
+        when OperatorType::DIV
+          "/"
+        else
+          raise "unsupported operator #{type.to_s}"
+        end
       end
     end
 

@@ -607,15 +607,12 @@ module DoisC
 
         # If either side is a generic type parameter, defer strict checking
         if left_type.is_a?(Types::GenericTypeParameter) || right_type.is_a?(Types::GenericTypeParameter)
-          case expr.operator
-          when ASTData::TokenType::COMP_LT, ASTData::TokenType::COMP_GT,
-               ASTData::TokenType::COMP_LTEQ, ASTData::TokenType::COMP_GTEQ,
-               ASTData::TokenType::COMP_EQ, ASTData::TokenType::COMP_NEQ,
-               ASTData::TokenType::AND, ASTData::TokenType::OR
-            return atomic_type("Bool")
-          else
-            # For arithmetic, propagate the generic type
+          case expr.operator.type
+          when ASTData::OperatorType::ADD, ASTData::OperatorType::SUB,
+               ASTData::OperatorType::MULT, ASTData::OperatorType::DIV
             return left_type
+          else
+            raise error("Unsupported generic binary operator #{expr.operator}", expr.source_location)
           end
         end
 
@@ -638,10 +635,9 @@ module DoisC
           raise error("Unsupported right operand type #{right_type.class} in binary expression", expr.right.source_location)
         end
 
-        case expr.operator
-        when ASTData::TokenType::ADD, ASTData::TokenType::SUB,
-            ASTData::TokenType::MUL, ASTData::TokenType::DIV,
-            ASTData::TokenType::IDIV, ASTData::TokenType::MODULUS
+        case expr.operator.type
+        when ASTData::OperatorType::ADD, ASTData::OperatorType::SUB,
+             ASTData::OperatorType::MULT, ASTData::OperatorType::DIV
           numeric_types = ["Int", "Float"]
           if numeric_types.includes?(left_nominal.definition.name) && numeric_types.includes?(right_nominal.definition.name)
             result_type = (left_nominal.definition.name == "Float" || right_nominal.definition.name == "Float") ? "Float" : "Int"
@@ -649,23 +645,6 @@ module DoisC
           else
             raise error("Arithmetic operator #{expr.operator} applied to non-numeric types: #{left_nominal.definition.name}, #{right_nominal.definition.name}", expr.source_location)
           end
-
-        when ASTData::TokenType::COMP_LT, ASTData::TokenType::COMP_GT,
-            ASTData::TokenType::COMP_LTEQ, ASTData::TokenType::COMP_GTEQ,
-            ASTData::TokenType::COMP_EQ, ASTData::TokenType::COMP_NEQ
-          if left_nominal.definition.name == right_nominal.definition.name
-            return atomic_type("Bool")
-          else
-            raise error("Comparison operator #{expr.operator} applied to mismatched types: #{left_nominal.definition.name}, #{right_nominal.definition.name}", expr.source_location)
-          end
-
-        when ASTData::TokenType::AND, ASTData::TokenType::OR
-          if left_nominal.definition.name == "Bool" && right_nominal.definition.name == "Bool"
-            return atomic_type("Bool")
-          else
-            raise error("Logical operator #{expr.operator} requires Bool operands", expr.source_location)
-          end
-
         else
           raise error("Unsupported binary operator #{expr.operator}", expr.source_location)
         end
