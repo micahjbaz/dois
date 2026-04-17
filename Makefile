@@ -12,11 +12,12 @@ run: build
 		exit 1; \
 	fi
 	./bin/doisc $(FILE)
-
+	cc out.c -o out
 
 # Run default test file, likely to be removed later on
 test: build
 	./bin/doisc ./examples/test.dois
+	cc out.c -o out
 
 # Clean build artifacts (optional)
 clean:

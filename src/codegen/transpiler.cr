@@ -71,7 +71,7 @@ module DoisC
       end
 
       private def emit_c_include_runtime
-        writeln "#include \"runtime/runtime.h\""
+        writeln "#include \"src/codegen/runtime/runtime.h\""
         newline
       end
     end
