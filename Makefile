@@ -20,4 +20,4 @@ test: build
 
 # Clean build artifacts (optional)
 clean:
-	rm -rf ./bin
+	rm -rf ./bin out.c

@@ -193,6 +193,7 @@ module DoisC
         @ctx.enter_scope
         func.params.each do |param|
           type = engine.parse_type_identifier(param.type_id, func.generics)
+          param.resolved_type = type
           @ctx.declare(param.name, type)
         end
 

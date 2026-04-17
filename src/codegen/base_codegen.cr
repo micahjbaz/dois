@@ -21,6 +21,15 @@ module DoisC
       protected def with_indent(&block)
         emitter.with_indent(&block)
       end
+
+      protected def clear
+        emitter.clear
+      end
+
+      protected def out
+        emitter.to_s
+      end
+      
     end
   end
 end

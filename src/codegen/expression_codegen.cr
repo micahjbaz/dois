@@ -13,31 +13,40 @@ module DoisC
       def emit(expr : ASTData::Expression)
         case expr
         when ASTData::IntLiteral
-          expr.value.to_s
+          write expr.value.to_s
         when ASTData::FloatLiteral
-          expr.value.to_s
+          write expr.value.to_s
         when ASTData::BoolLiteral
-          expr.value ? "true" : "false"
+          write expr.value ? "true" : "false"
         when ASTData::StringLiteral
           emit_string_literal(expr)
-        when ASTData::Identifier
-          emitter << sanitize_name(expr.name)
         when ASTData::BinaryExpression
           emit_binary(expr)
+        when ASTData::IdentifierExpression
+          emit_identifier_expression(expr)
         else
           raise "Unsupported expression codegen for #{expr.class}"
         end
       end
 
       private def emit_binary(expr : ASTData::BinaryExpression)
-        left = emit(expr.left)
-        right = emit(expr.right)
-        emitter << "(#{left} #{expr.operator} #{right})"
+        write "("
+        emit(expr.left)
+        write " "
+        write expr.operator.to_s
+        write " "
+        emit(expr.right)
+        write ")"
+        # write "(#{left} #{expr.operator.to_s} #{right})"
       end
 
       private def emit_string_literal(expr : ASTData::StringLiteral)
         escaped = expr.value.gsub("\\", "\\\\").gsub("\"", "\\\"")
-        emitter << "\"#{escaped}\""
+        write "\"#{escaped}\""
+      end
+
+      private def emit_identifier_expression(expr : ASTData::IdentifierExpression)
+        write sanitize_name(expr.identifier.to_s)
       end
 
       private def sanitize_name(name : String) : String

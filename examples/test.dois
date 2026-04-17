@@ -11,8 +11,14 @@ module MyModule has
     5
   end
 
+  # fn add$(x : Int, y : Int) : Int =>
+  #   x + y
+  # end
+
   proc main() do
-    let x : Float = 12.;
+    let x : Int = 5;
+    let y : Int = 10;
+    let sum = x + y;
   end
 end
 
