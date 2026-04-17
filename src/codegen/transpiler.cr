@@ -23,11 +23,11 @@ module DoisC
       end
 
       def transpile(ast : ASTData::AST) : String
-        emitter.clear
+        clear
         emit_c_include_runtime
         emit_c_declarations(ast)
         emit_c_main
-        emitter.to_s
+        out
       end
 
 
@@ -40,7 +40,7 @@ module DoisC
             found_main = true
           elsif stmt.is_a?(ASTData::Declaration)
             @declaration_codegen.emit(stmt)
-            emitter.puts
+            newline
           end
         end
         unless found_main
@@ -49,30 +49,30 @@ module DoisC
       end
 
       private def emit_c_dois_main(main_proc : ASTData::ProcedureDeclaration)
-        emitter.puts "void dois_main(void) {"
-
-        main_proc.body.statements.each do |main_stmt|
-          @function_codegen.emit_statement(main_stmt)
+        writeln "void dois_main(void) {"
+        with_indent do
+          main_proc.body.statements.each do |main_stmt|
+            @function_codegen.emit_statement(main_stmt)
+          end
         end
-
-        emitter.puts "}"
-        emitter.puts
+        writeln "}"
+        newline
       end
 
       private def emit_c_main
-        emitter.puts "int main(void) {"
-        emitter.with_indent do 
-          emitter.puts "dois_runtime_init();"
-          emitter.puts "dois_main();"
-          emitter.puts "dois_runtime_shutdown();"
-          emitter.puts "return 0;"
+        writeln "int main(void) {"
+        with_indent do 
+          writeln "dois_runtime_init();"
+          writeln "dois_main();"
+          writeln "dois_runtime_shutdown();"
+          writeln "return 0;"
         end
-        emitter.puts "}"
+        writeln "}"
       end
 
       private def emit_c_include_runtime
-        emitter.puts "#include \"runtime/runtime.h\""
-        emitter.puts
+        writeln "#include \"runtime/runtime.h\""
+        newline
       end
     end
   end
