@@ -7,6 +7,10 @@ module MyModule has
     message : Int
   end
 
+  type Box has
+    value : Int
+  end
+
   fn foo$() : Int =>
     5
   end
@@ -21,9 +25,8 @@ module MyModule has
   end
 
   proc main() do
-    let x : Int = 2;
-    let y : Int = 10;
-    print_sum(x, y);
+    let b = Box(value = 5);
+    print(b.value);
   end
 end
 

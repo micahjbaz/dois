@@ -1,5 +1,3 @@
-
-
 module DoisC
   module Codegen
     class TypeCodegen < BaseCodegen
@@ -21,8 +19,10 @@ module DoisC
             "bool"
           when "String"
             "const char*"
-          else
+          when "Nil"
             "void"
+          else
+            "struct #{sanitize_name(type.name)}"
           end
         else
           "void"
