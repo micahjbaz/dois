@@ -26,6 +26,8 @@ module DoisC
           emit_call(expr)
         when ASTData::ProcedureCall
           emit_call(expr)
+        when ASTData::Reassignment
+          emit_reassignment(expr)
         else
           raise "Unsupported expression codegen for #{expr.class}"
         end
@@ -48,14 +50,28 @@ module DoisC
       end
 
       private def emit_identifier_expression(expr : ASTData::IdentifierExpression)
-        if symbol_ref = expr.identifier.symbol_ref
-          write sanitize_name(symbol_ref.mangled_name)
-        else
-          write sanitize_name(expr.identifier.to_s)
+        identifier = expr.identifier
+
+        base_name = if symbol_ref = identifier.symbol_ref
+                      sanitize_name(symbol_ref.mangled_name)
+                    else
+                      sanitize_name(identifier.name)
+                    end
+
+        write base_name
+
+        identifier.accessor_names.each do |accessor|
+          write "."
+          write sanitize_name(accessor)
         end
       end
 
       private def emit_call(expr : ASTData::Call)
+        if constructor_call?(expr)
+          emit_constructor_call(expr)
+          return
+        end
+
         emit(expr.callee)
         write "("
         expr.arguments.each_with_index do |arg, index|
@@ -63,6 +79,35 @@ module DoisC
           emit(arg)
         end
         write ")"
+      end
+
+      private def constructor_call?(expr : ASTData::Call) : Bool
+        callee = expr.callee
+        return false unless callee.is_a?(ASTData::IdentifierExpression)
+
+        resolved_type = expr.resolved_type
+        return false unless resolved_type.is_a?(Types::NominalType)
+
+        callee.identifier.name == resolved_type.definition.name
+      end
+
+      private def emit_constructor_call(expr : ASTData::Call)
+        resolved_type = expr.resolved_type.as(Types::NominalType)
+        struct_name = sanitize_name(resolved_type.definition.name)
+
+        write "(struct #{struct_name}){"
+        expr.arguments.each_with_index do |arg, index|
+          write ", " if index > 0
+          emit(arg)
+        end
+        write "}"
+      end
+
+      private def emit_reassignment(expr : ASTData::Reassignment)
+        write "."
+        write sanitize_name(expr.identifier.to_s)
+        write " = "
+        emit(expr.value)
       end
 
       private def sanitize_name(name : String) : String
