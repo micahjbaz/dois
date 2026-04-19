@@ -3,6 +3,6 @@
 /.shards/
 *.dwarf
 .vscode/
-out.c
+out*
 node_modules/
 .DS_Store
