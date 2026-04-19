@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,8 +40,14 @@ void dois_array_push(DoisArray* array, void* value);
 DoisMap dois_map_new(void);
 void dois_map_put(DoisMap* map, void* key, void* value);
 
+
 DoisResult dois_ok(void* value);
 DoisResult dois_err(const char* error);
+
+void dois_print_int(int64_t value);
+void dois_print_float(double value);
+void dois_print_bool(bool value);
+void dois_print_string(const char* value);
 
 #ifdef __cplusplus
 }

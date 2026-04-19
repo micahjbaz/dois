@@ -1,12 +1,10 @@
-
-
 module DoisC
   module Codegen
     class FunctionCodegen < BaseCodegen
       def initialize(@type_codegen : TypeCodegen, @expression_codegen : ExpressionCodegen, @emitter : Emitter)
       end
 
-      def emit_function(fn : ASTData::FunctionDeclaration)
+      def emit_function_declaration(fn : ASTData::FunctionDeclaration)
         return_type = @type_codegen.c_type(fn.resolved_type.not_nil!)
         params = fn.params.map do |param|
           "#{@type_codegen.c_type(param.resolved_type.not_nil!)} #{param.name}"
@@ -21,7 +19,7 @@ module DoisC
         writeln "}"
       end
 
-      def emit_procedure(pc : ASTData::ProcedureDeclaration)
+      def emit_procedure_declaration(pc : ASTData::ProcedureDeclaration)
         return_type = @type_codegen.c_type(pc.resolved_type.not_nil!)
         params = pc.params.map do |param|
           "#{@type_codegen.c_type(param.resolved_type.not_nil!)} #{param.name}"
@@ -47,11 +45,52 @@ module DoisC
           write "#{type} #{stmt.name} = "
           @expression_codegen.emit(stmt.value)
         when ASTData::ExpressionStatement
+          if emit_builtin_print_statement(stmt.expression)
+            return
+          end
           @expression_codegen.emit(stmt.expression)
         else
           writeln "/* unsupported statement: #{stmt.class} */"
         end
         writeln ";"
+      end
+
+      private def emit_builtin_print_statement(expr : ASTData::Expression) : Bool
+        call = case expr
+               when ASTData::FunctionCall
+                 expr
+               when ASTData::ProcedureCall
+                 expr
+               else
+                 return false
+               end
+
+        callee = call.callee
+        return false unless callee.is_a?(ASTData::IdentifierExpression)
+        return false unless callee.identifier.name == "print"
+        return false unless call.arguments.size == 1
+
+        arg = call.arguments.first
+        arg_type = arg.resolved_type
+        return false unless arg_type.is_a?(Types::NominalType)
+
+        runtime_fn = case arg_type.definition.name
+                     when "Int"
+                       "dois_print_int"
+                     when "Float"
+                       "dois_print_float"
+                     when "Bool"
+                       "dois_print_bool"
+                     when "String"
+                       "dois_print_string"
+                     else
+                       raise "Unsupported print codegen for type #{arg_type.definition.name}"
+                     end
+
+        write "#{runtime_fn}("
+        @expression_codegen.emit(arg)
+        writeln ");"
+        true
       end
     end
   end
