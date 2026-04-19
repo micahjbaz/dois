@@ -217,6 +217,7 @@ module DoisC
         @ctx.enter_scope
         proc.params.each do |param| 
           type = engine.parse_type_identifier(param.type_id, proc.generics)
+          param.resolved_type = type
           @ctx.declare(param.name, type)
         end
 
@@ -224,6 +225,7 @@ module DoisC
         result_def = global.type_definition(global.type_reference("Result").as(Types::NominalTypeReference)) ||
                     raise error("Missing type definition for Result", proc.source_location)
         result_type = Types::NominalType.new(result_def, [] of Types::Type)
+        proc.resolved_type = result_type
 
         @ctx.with_return_type(result_type) do
           proc.body.statements.each do |stmt|

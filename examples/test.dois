@@ -11,17 +11,19 @@ module MyModule has
     5
   end
 
-  # fn add$(x : Int, y : Int) : Int =>
-  #   x + y
-  # end
+  fn add$(x : Int, y : Int) : Int =>
+    x + y
+  end
+
+  proc print_sum(x : Int, y : Int) do
+    let s = add$(x, y);
+    print(s);
+  end
 
   proc main() do
-    let x : Int = 5;
+    let x : Int = 2;
     let y : Int = 10;
-    let sum = x + y;
-    let z = foo$();
-    print(z);
-    print(sum);
+    print_sum(x, y);
   end
 end
 

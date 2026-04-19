@@ -22,10 +22,10 @@ module DoisC
           when "String"
             "const char*"
           else
-            "void*"
+            "void"
           end
         else
-          "void*"
+          "void"
         end
       end
 
