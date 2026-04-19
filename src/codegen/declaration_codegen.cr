@@ -11,13 +11,13 @@ module DoisC
       def emit(decl : TopLevelDecl)
         case decl
         when ASTData::ProductTypeDeclaration
-          @type_codegen.emit_product(decl)
+          @type_codegen.emit_product_declaration(decl)
         when ASTData::UnionTypeDeclaration
-          @type_codegen.emit_union(decl)
+          @type_codegen.emit_union_declaration(decl)
         when ASTData::FunctionDeclaration
-          @function_codegen.emit_function(decl)
+          @function_codegen.emit_function_declaration(decl)
         when ASTData::ProcedureDeclaration
-          @function_codegen.emit_procedure(decl)
+          @function_codegen.emit_procedure_declaration(decl)
         else
           raise "Unsupported top-level declaration for codegen: #{decl.class}"
         end

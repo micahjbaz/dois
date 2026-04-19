@@ -16,18 +16,27 @@ module DoisC
       # Functions and procedures unified
       @func_defs : Hash(String, Types::FunctionDefinition)
 
+      # Builtin procedures/functions provided by the compiler prelude.
+      # These may still need special verifier/codegen handling, but they
+      # should be registered here as part of the global semantic environment.
+      @builtins : Set(String)
+
       getter func_defs : Hash(String, Types::FunctionDefinition)
+      getter builtins : Set(String)
 
       def initialize
         @type_refs = {} of String => Types::NominalTypeReference
         @type_defs = {} of Types::NominalTypeReference => Types::TypeDefinition
         @func_defs = {} of String => Types::FunctionDefinition
+        @builtins = Set(String).new
 
         # TODO need a cleaner way of starting prelude for atomic types etc
         # Pre-register atomic types
         Types::Atomic.each do |atomic|
           register_atomic_type(atomic)
         end
+
+        register_builtin_prelude
       end
 
       private def register_atomic_type(atomic)
@@ -35,6 +44,18 @@ module DoisC
         ref = Types::NominalTypeReference.new(defn.name)
         @type_refs[defn.name] = ref
         @type_defs[ref] = defn
+      end
+
+      private def register_builtin_prelude
+        register_builtin("print")
+      end
+
+      private def register_builtin(name : String)
+        @builtins << name
+      end
+
+      def builtin?(name : String) : Bool
+        @builtins.includes?(name)
       end
 
       def register_type(name : String)

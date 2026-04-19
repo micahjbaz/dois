@@ -421,6 +421,10 @@ module DoisC
             end
           end
 
+          if type.nil? && global.builtin?(id.name)
+            raise error("Builtin #{id.name} must be used in a call position", id.source_location)
+          end
+
           # Still not found → error
           raise error("Undefined identifier #{id.name}", id.source_location) if type.nil?
         end
@@ -485,6 +489,16 @@ module DoisC
 
         if callee_expr.is_a?(IdentifierExpression)
           callee_name = callee_expr.identifier.name
+
+          if global.builtin?(callee_name)
+            case callee_name
+            when "print"
+              return verify_builtin_print(call_expr)
+            else
+              raise error("Unsupported builtin #{callee_name}", call_expr.source_location)
+            end
+          end
+
           type_ref = global.type_reference(callee_name).as?(Types::NominalTypeReference)
           type_def = type_ref && global.type_definition(type_ref)
 
@@ -494,6 +508,27 @@ module DoisC
         end
 
         verify_function_call(call_expr)
+      end
+
+      private def verify_builtin_print(call_expr : Call) : Types::Type
+        if call_expr.arguments.size != 1
+          raise error("print expects exactly 1 argument", call_expr.source_location)
+        end
+
+        arg_type = verify_expression(call_expr.arguments.first)
+
+        printable = case arg_type
+                    when Types::NominalType
+                      ["Int", "Float", "Bool", "Char", "String"].includes?(arg_type.definition.name)
+                    else
+                      false
+                    end
+
+        unless printable
+          raise error("print does not support values of type #{arg_type}", call_expr.arguments.first.source_location)
+        end
+
+        atomic_type("Nil")
       end
 
       # Handles product type constructor calls like Some(value = 3)

@@ -29,7 +29,7 @@ module DoisC
         end
       end
 
-      def emit_product(decl : ASTData::ProductTypeDeclaration)
+      def emit_product_declaration(decl : ASTData::ProductTypeDeclaration)
         name = sanitize_name(decl.name)
 
         writeln "struct #{name} {"
@@ -44,7 +44,7 @@ module DoisC
         newline
       end
 
-      def emit_union(decl : ASTData::UnionTypeDeclaration)
+      def emit_union_declaration(decl : ASTData::UnionTypeDeclaration)
         name = sanitize_name(decl.name)
 
         writeln "struct #{name} {"

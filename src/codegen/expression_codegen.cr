@@ -1,5 +1,3 @@
-
-
 require "../ast_data/*"
 require "../types/*"
 
@@ -24,6 +22,10 @@ module DoisC
           emit_binary(expr)
         when ASTData::IdentifierExpression
           emit_identifier_expression(expr)
+        when ASTData::FunctionCall
+          emit_call(expr)
+        when ASTData::ProcedureCall
+          emit_call(expr)
         else
           raise "Unsupported expression codegen for #{expr.class}"
         end
@@ -46,7 +48,21 @@ module DoisC
       end
 
       private def emit_identifier_expression(expr : ASTData::IdentifierExpression)
-        write sanitize_name(expr.identifier.to_s)
+        if symbol_ref = expr.identifier.symbol_ref
+          write sanitize_name(symbol_ref.mangled_name)
+        else
+          write sanitize_name(expr.identifier.to_s)
+        end
+      end
+
+      private def emit_call(expr : ASTData::Call)
+        emit(expr.callee)
+        write "("
+        expr.arguments.each_with_index do |arg, index|
+          write ", " if index > 0
+          emit(arg)
+        end
+        write ")"
       end
 
       private def sanitize_name(name : String) : String
