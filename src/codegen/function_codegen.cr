@@ -20,7 +20,7 @@ module DoisC
       end
 
       def emit_procedure_declaration(pc : ASTData::ProcedureDeclaration)
-        return_type = @type_codegen.c_type(pc.resolved_type.not_nil!)
+        return_type = "void"
         params = pc.params.map do |param|
           "#{@type_codegen.c_type(param.resolved_type.not_nil!)} #{param.name}"
         end.join(", ")
