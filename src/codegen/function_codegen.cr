@@ -41,7 +41,6 @@ module DoisC
       def emit_statement(stmt : ASTData::Statement)
         case stmt
         when ASTData::Binding
-          pp stmt.resolved_type
           type = @type_codegen.c_type(stmt.resolved_type.not_nil!)
           write "#{type} #{stmt.name} = "
           @expression_codegen.emit(stmt.value)
