@@ -145,9 +145,7 @@ module DoisC
       end
       
       private def desugar_assign_operator(type : TokenType) : TokenType
-        pp type
         token_type = DESUGARED_ASSIGN_OPERATORS[type]?
-        pp token_type
         return token_type if token_type
         return TokenType::EOF # fallback so we have some tokentype to return, should never happen
       end
