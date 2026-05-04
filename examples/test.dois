@@ -25,8 +25,9 @@ module MyModule has
   end
 
   proc main() do
-    let b = Box(value = 5);
-    print(b.value);
+    print(foo$);
+    let foo = 6;
+    print(foo);
   end
 end
 

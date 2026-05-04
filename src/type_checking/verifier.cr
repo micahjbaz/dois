@@ -262,10 +262,10 @@ module DoisC
           end
 
           decl.resolved_type = annotated_type
-          @ctx.declare(decl.name, annotated_type)
+          @ctx.declare(decl.name, annotated_type, decl.symbol_ref)
         else
           decl.resolved_type = value_type
-          @ctx.declare(decl.name, value_type)
+          @ctx.declare(decl.name, value_type, decl.symbol_ref)
         end
       end
 
@@ -296,7 +296,7 @@ module DoisC
 
         binding.resolved_type = resolved_type
         generalized = engine.generalize(resolved_type)
-        @ctx.declare(name, generalized)
+        @ctx.declare(name, generalized, binding.symbol_ref)
       end
 
       # Verify an expression and return its resolved type
@@ -388,9 +388,14 @@ module DoisC
       end
 
       private def verify_identifier(id : Identifier) : Types::Type
-        id.symbol_ref = ASTData::SymbolRef.new(@ctx.current_module_scope, id.name)
         # First, look in local scope
-        type = @ctx.lookup(id.name)
+        binding = @ctx.lookup_binding(id.name)
+        type = binding ? binding.type : nil
+
+        if binding && binding.symbol_ref
+          id.symbol_ref = binding.symbol_ref
+        end
+
         # Instantiate polymorphic types when they are used
         if type
           type = engine.instantiate(type)
@@ -402,6 +407,7 @@ module DoisC
             type_def = global.type_definition(type_ref)
             if type_def.is_a?(Types::ProductTypeDefinition)
               type = Types::NominalType.new(type_def, type_def.generics.map { |_| engine.fresh_type_variable.as(Types::Type) })
+              id.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, id.name)
             end
           end
           # Check if it's a global function or procedure
@@ -417,6 +423,7 @@ module DoisC
                   generic_scope
                 )
                 type = engine.instantiate(type)
+                id.symbol_ref ||= ASTData::SymbolRef.new(@ctx.current_module_scope, id.name)
               rescue e : Exception
                 raise error(e.message, id.source_location)
               end
