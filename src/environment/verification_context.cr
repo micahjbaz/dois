@@ -1,5 +1,6 @@
 require "./global"
 require "../types/type"
+require "../ast_data/symbol_ref"
 
 module DoisC
   module Environment
@@ -8,10 +9,14 @@ module DoisC
     class VerificationContext
 
       # ===== Global =====
+      record LocalBinding,
+        type : Types::Type,
+        symbol_ref : ASTData::SymbolRef?
+
       getter globals : Global
 
       # ===== Variable Scopes =====
-      @scopes : Array(Hash(String, Types::Type))
+      @scopes : Array(Hash(String, LocalBinding))
 
       # ===== Generic Scopes =====
       @generic_scopes : Array(Hash(String, Types::GenericTypeParameter))
@@ -26,7 +31,7 @@ module DoisC
       @loop_depth : Int32
 
       def initialize(@globals : Global)
-        @scopes = [{} of String => Types::Type]
+        @scopes = [{} of String => LocalBinding]
         @generic_scopes = [{} of String => Types::GenericTypeParameter]
         @current_return_type = nil
         @module_scope = [] of String
@@ -38,22 +43,27 @@ module DoisC
       # ============================
 
       def enter_scope
-        @scopes.push({} of String => Types::Type)
+        @scopes.push({} of String => LocalBinding)
       end
 
       def exit_scope
         @scopes.pop
       end
 
-      def declare(name : String, type : Types::Type)
-        @scopes.last[name] = type
+      def declare(name : String, type : Types::Type, symbol_ref : ASTData::SymbolRef? = nil)
+        @scopes.last[name] = LocalBinding.new(type, symbol_ref)
       end
 
-      def lookup(name : String) : Types::Type?
+      def lookup_binding(name : String) : LocalBinding?
         @scopes.reverse_each do |scope|
           return scope[name]? if scope.has_key?(name)
         end
         nil
+      end
+
+      def lookup(name : String) : Types::Type?
+        binding = lookup_binding(name)
+        binding ? binding.type : nil
       end
 
       # ============================
