@@ -4,7 +4,8 @@ require "../types/definition"
 module DoisC
   module Environment
 
-    # Environment for type, function, and procedure definitions
+    # Global semantic environment for predeclared types, builtin symbols,
+    # and user-defined top-level type/function/procedure declarations.
     class Global
 
       # Canonical references
@@ -30,13 +31,19 @@ module DoisC
         @func_defs = {} of String => Types::FunctionDefinition
         @builtins = Set(String).new
 
-        # TODO need a cleaner way of starting prelude for atomic types etc
-        # Pre-register atomic types
+        register_prelude
+      end
+
+      private def register_prelude
+        register_atomic_types
+        register_builtin_types
+        register_builtin_prelude
+      end
+
+      private def register_atomic_types
         Types::Atomic.each do |atomic|
           register_atomic_type(atomic)
         end
-
-        register_builtin_prelude
       end
 
       private def register_atomic_type(atomic)
@@ -46,18 +53,73 @@ module DoisC
         @type_defs[ref] = defn
       end
 
+      private def register_builtin_type(name : String, defn : Types::TypeDefinition)
+        ref = Types::NominalTypeReference.new(name)
+        @type_refs[name] = ref
+        @type_defs[ref] = defn
+      end
+
+      private def register_builtin_product_type(name : String, defn : Types::ProductTypeDefinition)
+        register_builtin_type(name, defn)
+      end
+
+      private def register_builtin_union_type(name : String, defn : Types::UnionTypeDefinition)
+        register_builtin_type(name, defn)
+      end
+
+      private def register_builtin_types
+        register_result_prelude_types
+      end
+
+      private def register_result_prelude_types
+        err_ref = Types::NominalTypeReference.new("Err")
+        result_ref = Types::NominalTypeReference.new("Result")
+        int_ref = Types::NominalTypeReference.new("Int")
+        nil_ref = Types::NominalTypeReference.new("Nil")
+
+        err_def = Types::ProductTypeDefinition.new(
+          "Err",
+          [] of String,
+          {"message" => int_ref},
+          err_ref,
+        )
+
+        result_def = Types::UnionTypeDefinition.new(
+          "Result",
+          [] of String,
+          [err_ref, nil_ref],
+        )
+
+        register_builtin_product_type("Err", err_def)
+        register_builtin_union_type("Result", result_def)
+      end
+
+      private def result_type_ref : Types::NominalTypeReference
+        @type_refs["Result"]
+      end
+
+      # Register compiler-provided names that exist without being declared in
+      # user source. This is the current prelude hook for builtins and can later
+      # be expanded to include predeclared types like Result, Ok, Err, etc.
       private def register_builtin_prelude
-        register_builtin("print")
+        register_builtin_proc("print")
       end
 
       private def register_builtin(name : String)
         @builtins << name
       end
 
+      private def register_builtin_proc(name : String)
+        register_builtin(name)
+      end
+
+      # Returns true if the given name belongs to the compiler-provided prelude.
       def builtin?(name : String) : Bool
         @builtins.includes?(name)
       end
 
+      # Register a user-defined nominal type name before its full definition is
+      # resolved. This is distinct from builtin/prelude type registration.
       def register_type(name : String)
         raise "Type #{name} already defined" if @type_refs.has_key?(name)
         @type_refs[name] = Types::NominalTypeReference.new(name)
@@ -83,7 +145,8 @@ module DoisC
         @func_defs[name] = defn
       end
 
-      # Treat procedures as functions returning Result
+      # Procedures are currently stored in the same global function table.
+      # Their semantic distinction is preserved elsewhere in the compiler.
       def define_procedure(name : String, defn : Types::FunctionDefinition)
         define_function(name, defn)
       end
