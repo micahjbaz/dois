@@ -1,12 +1,4 @@
 module MyModule has
-  type Result is
-    Err | Nil
-  end
-
-  type Err has
-    message : Int
-  end
-
   type Box has
     value : Int
   end
