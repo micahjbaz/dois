@@ -505,7 +505,7 @@ module DoisC
     # ##############################################################################################
 
     enum OperatorType
-      ADD; SUB; MULT; DIV;
+      ADD; SUB; MULT; DIV; EQ
     end
 
     class Operator
@@ -524,6 +524,8 @@ module DoisC
           "*"
         when OperatorType::DIV
           "/"
+        when OperatorType::EQ
+          "=="
         else
           raise "unsupported operator #{type.to_s}"
         end

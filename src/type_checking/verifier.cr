@@ -689,6 +689,12 @@ module DoisC
           else
             raise error("Arithmetic operator #{expr.operator} applied to non-numeric types: #{left_nominal.definition.name}, #{right_nominal.definition.name}", expr.source_location)
           end
+        when ASTData::OperatorType::EQ
+          if left_nominal.definition.name == right_nominal.definition.name
+            return atomic_type("Bool")
+          else
+            raise error("Boolean operator #{expr.operator} applied to two different types; left: #{left_nominal.definition.name}, right: #{right_nominal.definition.name}", expr.source_location)
+          end
         else
           raise error("Unsupported binary operator #{expr.operator}", expr.source_location)
         end

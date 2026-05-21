@@ -94,6 +94,8 @@ module DoisC
           OperatorType::MULT
         when TokenType::DIV
           OperatorType::DIV
+        when TokenType::COMP_EQ
+          OperatorType::EQ
         else
           raise error("unsupported operator '#{operator.lexeme}'", operator)
         end

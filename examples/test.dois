@@ -1,26 +1,10 @@
 module MyModule has
-  type Box has
-    value : Int
-  end
-
-  fn foo$() : Int =>
-    5
-  end
-
-  fn add$(x : Int, y : Int) : Int =>
-    x + y
-  end
-
-  proc print_sum(x : Int, y : Int) do
-    let s = add$(x, y);
-    print(s);
-  end
 
   proc main() do
-    print(foo$);
-    let foo = 6;
-    print(foo);
+    let b = 1 == 0;
+    print(b);
+    let c = 1 == 1;
+    print(c);
   end
 end
 
-  
